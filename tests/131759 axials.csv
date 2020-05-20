@@ -1,0 +1,52 @@
+Feature Table,,,,,,,
+Units,Inches,,,,,,
+Coordinate Systems,world,,,,,,
+Data Alignments,,,,,,,
+,,,,,,,
+Name,Control,Nom,Meas,Tol,Dev,Test,Out Tol
+Active Face,Flatness,,0.0004,0.0010,0.0004,Pass,
+Stage 1 Eye Face,Parallelism A,,0.0026,0.0200,0.0026,Pass,
+Stage 1 Eye Face,Flatness,,0.0006,0.0020,0.0006,Pass,
+Stage 1 I.C.P.,Parallelism A,,0.0125,0.0200,0.0125,Pass,
+Stage 1 I.C.P.,Flatness,,0.0027,0.0020,0.0027,Fail,0.0007
+Stage 1 I.B.P.,Parallelism A,,0.0049,0.0200,0.0049,Pass,
+Stage 1 I.B.P.,Flatness,,0.0037,0.0020,0.0037,Fail,0.0017
+Stage 2 Eye Face,Parallelism A,,0.0013,0.0200,0.0013,Pass,
+Stage 2 Eye Face,Flatness,,0.0004,0.0020,0.0004,Pass,
+Stage 2 I.C.P.,Parallelism A,,0.0081,0.0200,0.0081,Pass,
+Stage 2 I.C.P.,Flatness,,0.0004,0.0020,0.0004,Pass,
+Stage 2 I.B.P.,Parallelism A,,0.0051,0.0200,0.0051,Pass,
+Stage 2 I.B.P.,Flatness,,0.0020,0.0020,0.0020,Pass,
+Stage 3 Eye Face,Parallelism A,,0.0011,0.0200,0.0011,Pass,
+Stage 3 Eye Face,Flatness,,0.0007,0.0020,0.0007,Pass,
+Stage 3 I.C.P.,Parallelism A,,0.0049,0.0200,0.0049,Pass,
+Stage 3 I.C.P.,Flatness,,0.0028,0.0020,0.0028,Fail,0.0008
+Stage 3 I.B.P.,Parallelism A,,0.0048,0.0200,0.0048,Pass,
+Stage 3 I.B.P.,Flatness,,0.0024,0.0020,0.0024,Fail,0.0004
+Stage 4 Eye Face,Parallelism A,,0.0004,0.0200,0.0004,Pass,
+Stage 4 Eye Face,Flatness,,0.0001,0.0020,0.0001,Pass,
+Stage 4 I.C.P.,Parallelism A,,0.0228,0.0200,0.0228,Fail,0.0028
+Stage 4 I.C.P.,Flatness,,0.0052,0.0020,0.0052,Fail,0.0032
+Stage 4 I.B.P.,Parallelism A,,0.0125,0.0200,0.0125,Pass,
+Stage 4 I.B.P.,Flatness,,0.0005,0.0020,0.0005,Pass,
+Stage 5 Eye Face,Parallelism A,,0.0011,0.0200,0.0011,Pass,
+Stage 5 Eye Face,Flatness,,0.0001,0.0020,0.0001,Pass,
+Stage 5 I.C.P.,Parallelism A,,0.0105,0.0200,0.0105,Pass,
+Stage 5 I.C.P.,Flatness,,0.0041,0.0020,0.0041,Fail,0.0021
+Stage 5 I.B.P.,Parallelism A,,0.0087,0.0200,0.0087,Pass,
+Stage 5 I.B.P.,Flatness,,0.0019,0.0020,0.0019,Pass,
+Stage 6 Eye Face,Parallelism A,,0.0008,0.0200,0.0008,Pass,
+Stage 6 Eye Face,Flatness,,0.0004,0.0020,0.0004,Pass,
+Stage 6 I.C.P.,Parallelism A,,0.0158,0.0200,0.0158,Pass,
+Stage 6 I.C.P.,Flatness,,0.0080,0.0020,0.0080,Fail,0.0060
+Stage 6 I.B.P.,Parallelism A,,0.0085,0.0200,0.0085,Pass,
+Stage 6 I.B.P.,Flatness,,0.0011,0.0020,0.0011,Pass,
+Stage 7 Eye Face,Parallelism A,,0.0018,0.0200,0.0018,Pass,
+Stage 7 Eye Face,Flatness,,0.0009,0.0020,0.0009,Pass,
+Stage 7 I.C.P.,Parallelism A,,0.0087,0.0200,0.0087,Pass,
+Stage 7 I.C.P.,Flatness,,0.0021,0.0020,0.0021,Fail,0.0001
+Stage 7 I.B.P.,Parallelism A,,0.0097,0.0200,0.0097,Pass,
+Stage 7 I.B.P.,Flatness,,0.0019,0.0020,0.0019,Pass,
+
+
+
