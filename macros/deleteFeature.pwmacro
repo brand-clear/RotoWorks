@@ -1,0 +1,14 @@
+version "5.0"
+# ======================================================
+# Delete a Tree View feature.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : Feature index
+# ======================================================
+
+
+TREEVIEW OBJECT SELECT NONE
+TREEVIEW FEATURE SELECT ( $1 )
+EDIT OBJECT DELETE (  )

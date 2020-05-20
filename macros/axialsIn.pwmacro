@@ -1,0 +1,114 @@
+version "5.0"
+# ======================================================
+# Guide the user through an Axial Inspection measurement 
+# session.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Absolute path to data file
+# $2 : string : Absolute path to macros
+# ======================================================
+
+
+DECLARE filePath $1
+DECLARE macroPath $2
+DECLARE activeExists
+DECLARE activeIndex
+DECLARE rowCount
+DECLARE line 1
+DECLARE label
+DECLARE stage
+DECLARE lineArray
+DECLARE lineArrayIndex
+DECLARE lineArraySize
+DECLARE stageFeatureName
+DECLARE flatnessTol 0.0150
+DECLARE parallelismTol 0.0200
+DECLARE tryAgain 1
+DECLARE errorStatus
+
+
+# Test Variables
+# --------------
+#SET filePath "C:\Users\mcclbra\Desktop\development\rotoworks\tests\AxialScope.csv"
+#SET macroPath "C:\Users\mcclbra\Desktop\development\rotoworks\macros"
+
+
+CONFIG UNITS LENGTH ( "Inches" )
+
+# Verify that datum exists
+MACRO EXEC ( "${macroPath}\activeFaceHandler.pwmacro", $macroPath )
+
+
+DATA_FILE PROPERTIES NB_LINES GET ( $filePath, rowCount )
+
+
+# Iterate over each line in the data file
+WHILE $line <= $rowCount
+    
+    # Get the line of the file as an array of strings
+    DATA_FILE READ LINE_FIELDS ( $filePath, $line, lineArray, ",", "Off")
+    
+    # First item in the array ($lineArray[1]) options:
+    # {Balance Drum, Distance, Width, Stage X}
+    
+    IF $lineArray[1] == "Balance Drum"
+        MACRO EXEC ( "${macroPath}\cleanupActiveDistance.pwmacro", "B.D." )
+        MACRO EXEC ( "${macroPath}\axialTargetHandler.pwmacro", $lineArray[1], $flatnessTol, $parallelismTol, $macroPath )
+        FEATURE DISTANCE CREATE ( "Active Face", "Balance Drum", "B.D.-B.D. Face" )
+        
+    ELSEIF $lineArray[1] == "Distance"
+        SET label $lineArray[2]
+        MACRO EXEC ( "${macroPath}\distanceHandler.pwmacro", $label, $flatnessTol, $parallelismTol, $macroPath )
+        FEATURE DISTANCE CREATE ( "Active Face", "Distance ${label}", "To Distance ${label}" )
+        
+    ELSEIF $lineArray[1] == "Width"
+        SET label $lineArray[2]
+        MACRO EXEC ( "${macroPath}\widthHandler.pwmacro", $label, $flatnessTol, $parallelismTol, $macroPath )
+        FEATURE DISTANCE CREATE ( "Width ${label} 1", "Width ${label} 2", "Width ${label}" )
+        
+    ELSE
+        # "Stage X" might represent a collection of features so an iteration of the row elements is required
+        SET lineArraySize SIZE ( lineArray )
+        SET lineArrayIndex 2
+        SET stage $lineArray[1]
+        
+        MACRO EXEC ( "${macroPath}\cleanupActiveDistance.pwmacro", $stage )
+        
+        WHILE $lineArrayIndex <= $lineArraySize
+            SET stageFeatureName "${stage} ${lineArray[$lineArrayIndex]}"
+            MACRO EXEC ( "${macroPath}\axialTargetHandler.pwmacro", $stageFeatureName, $flatnessTol, $parallelismTol, $macroPath )
+            ++ lineArrayIndex
+        ENDWHILE
+        
+        
+        # Build distance features for all stage-related axial targets
+        
+        # Centrifugal compressor features
+        # -------------------------------
+        FEATURE DISTANCE CREATE ( "Active Face", "${stage} I.B.P.", "${stage}-I.B.P." )
+        # Closed face only
+        FEATURE DISTANCE CREATE ( "Active Face", "${stage} Eye Face", "${stage}-Eye Face" )
+        FEATURE DISTANCE CREATE ( "${stage} I.B.P.", "${stage} I.C.P.", "${stage}-G.P. Width" )
+        # Opened face only
+        FEATURE DISTANCE CREATE ( "Active Face", "${stage} Leading Edge", "${stage}-Leading Edge" )
+        FEATURE DISTANCE CREATE ( "${stage} Leading Edge", "${stage} Trailing Edge", "${stage}-G.P. Width" )
+        FEATURE DISTANCE CREATE ( "${stage} I.B.P.", "${stage} O.B.P.", "${stage}-B.P. Width" )
+        
+        # Steam turbine/expander/axial flow features
+        # ------------------------------------------
+        FEATURE DISTANCE CREATE ( "Active Face", "${stage} Disk Face", "${stage}-Disk Face" )
+        FEATURE DISTANCE CREATE ( "Active Face", "${stage} Seal Eye Face", "${stage}-Seal Eye Face" )
+        FEATURE DISTANCE CREATE ( "Active Face", "${stage} Shroud Band", "${stage}-Shroud Band")
+        FEATURE DISTANCE CREATE ( "Active Face", "${stage} Blade Root", "${stage}-Blade Root" )
+        FEATURE DISTANCE CREATE ( "Active Face", "${stage} Blade Edge", "${stage}-Blade Edge" )
+        
+        
+    ENDIF
+    
+    ++ line
+    
+ENDWHILE
+
+

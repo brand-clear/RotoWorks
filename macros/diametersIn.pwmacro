@@ -1,0 +1,85 @@
+version "5.0"
+#==========================================================
+# Create diametrical measurements in PolyWorks.
+# ---------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Absolute path to the CSV file that contains 
+#     the work scope. The file, or work scope, contains
+#     rows of dimension labels that must be recorded either
+#     with a probe or by hand. 
+# $2 : string : Absolute path to macros
+#
+# Notes
+# -----
+# Labels that require probing with a constraining plane are 
+# identified with a "*P" modifier. Labels that require a 
+# hand measurement are identified with a "*H" modifier. 
+# Labels without a modifier are probed without a 
+# constraining plane.
+#==========================================================
+
+
+DECLARE csvFile $1
+DECLARE macroPath $2
+DECLARE row 1
+DECLARE rowCount
+DECLARE label
+DECLARE labelSplitArray
+DECLARE labelSplitLength
+DECLARE featureName
+DECLARE handMeas
+
+
+# Test variables
+# --------------
+#SET macroPath "C:\Users\mcclbra\Desktop\development\rotoworks\macros"
+#SET csvFile "C:\Users\mcclbra\Desktop\development\rotoworks\data\jobs\131500-131999\131759\Phase 1\DiameterScope.csv"
+
+
+# Get the number of rows in the CSV file
+DATA_FILE PROPERTIES NB_LINES GET ( $csvFile, rowCount )
+
+
+WHILE $row <= $rowCount
+    
+    # Verify that a datum cylinder exists at all times. Each diametrical
+    # target will measure its parallelism with respect to datum cylinder A.
+    MACRO EXEC ( "${macroPath}\datumCylinderHandler.pwmacro", $macroPath )
+    
+    # Get dimension label from CSV file row and search for modifiers
+    DATA_FILE READ LINE ( $csvFile, $row, label )
+    MACRO STRING SPLIT ( $label, "*", labelSplitArray )
+    # ${labelSplitArray} Ex.) {"A"} or {"A", "H"} or {"A", "P"}
+    
+    SET featureName $labelSplitArray[1]
+    SET labelSplitLength SIZE ( labelSplitArray )
+    
+    
+    IF $labelSplitLength == 1
+        # Probe dimension, no modifiers
+        FEATURE PRIMITIVE CYLINDER OPTIONS PROBE STANDARD USE_CONSTRAINING_PLANE ( "Off" )
+        MACRO EXEC ( "${macroPath}\diametricalTargetHandler.pwmacro", $featureName, $macroPath )
+        
+    ELSEIF $labelSplitArray[2] == "P"
+        # Probe dimension with constraining plane
+        FEATURE PRIMITIVE CYLINDER OPTIONS PROBE STANDARD USE_CONSTRAINING_PLANE ( "On" )
+        FEATURE PRIMITIVE CYLINDER OPTIONS PROBE STANDARD CONSTRAINING_PLANE METHOD ( "Probe Local Plane" )
+        MACRO EXEC ( "${macroPath}\diametricalTargetHandler.pwmacro", $featureName, $macroPath )
+        
+    ELSEIF $labelSplitArray[2] == "H"
+        # Manually input hand measurement
+        MACRO EXEC ( "${macroPath}\cleanupDiametricalTarget.pwmacro", $featureName, $macroPath)
+        MACRO INPUT DOUBLE ( handMeas, , {"${featureName} Measurement:"}, )
+        MEASURE CUSTOM_MEASUREMENT NUMERICAL CREATE NUMERICALLY ( 0, 0, 0, , , , $featureName )
+        MEASURE CONTROL MEASURED ( "Custom", $handMeas, $featureName )
+        
+    ENDIF
+    
+    ++ row
+    
+ENDWHILE
+
+
+

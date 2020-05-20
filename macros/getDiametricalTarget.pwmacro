@@ -1,0 +1,101 @@
+version "5.0"
+# ======================================================
+# Create a validated diametrical inspection target.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Feature name
+# $2 : double : Cylindricity tolerance
+# $3 : double : Parallelism tolerance
+# $4 : double : Diameter deviation tolerance
+# $5 : int    : Validation container
+# $6 : string : Absolute path to macros
+# ------------------------------------------------------
+#
+# Returns
+# -------
+# $5 : int    : 1 if the target is accepted, else 0
+# ------------------------------------------------------
+#
+# Raises
+# ------
+# Error
+#     If the user cancels before creating the feature
+# ------------------------------------------------------
+#
+# Notes
+# -----
+# A connection to the probing device is assumed.
+# ======================================================
+
+
+DECLARE featureName $1
+DECLARE cylindricityTol $2
+DECLARE parallelismTol $3
+DECLARE deviationTol $4
+DECLARE macroPath $6
+DECLARE refOne "${featureName} Ref 1"
+DECLARE refTwo "${featureName} Ref 2"
+DECLARE refOneDiameter
+DECLARE refTwoDiameter
+DECLARE measuredDeviation
+DECLARE featureExists
+DECLARE featureIndex
+DECLARE tryAgain
+DECLARE accepted
+DECLARE PASS 1
+DECLARE FAIL 0
+
+
+# Test variables
+# --------------
+#SET featureName "Test cylinder"
+#SET cylindricityTol 0.005
+#SET parallelismTol 0.016
+#SET macroPath "C:\Users\mcclbra\Desktop\development\rotoworks\macros"
+
+
+# Remove conflicting measurements
+MACRO EXEC ( "${macroPath}\cleanupDiametricalTarget.pwmacro", $featureName, $macroPath)
+
+
+# Get the initial target reference
+MACRO EXEC ( "${macroPath}\getDependentCylinderFeature.pwmacro", $refOne, $cylindricityTol, $parallelismTol, accepted, refOneDiameter, $macroPath )
+IF $accepted == 0
+    MACRO END ( "Error" )
+ENDIF
+
+
+# Get the secondary target reference
+MACRO EXEC ( "${macroPath}\getDependentCylinderFeature.pwmacro", $refTwo, $cylindricityTol, $parallelismTol, accepted, refTwoDiameter, $macroPath )
+IF $accepted == 0
+    MACRO EXEC ( "${macroPath}\deleteMeasurementIfFound.pwmacro", $refOne, $macroPath)
+    MACRO END ( "Error" )
+ENDIF
+
+
+# Validate deviation between reference targets
+SET measuredDeviation EXPR ( ABS( $refOneDiameter - $refTwoDiameter ) )
+IF $measuredDeviation > $deviationTol
+    MACRO INPUT QUESTION ( tryAgain, {"The difference between your measurements (${measuredDeviation}) exceeds the allowable tolerance of ${deviationTol}.", "Do you want to reprobe?"})
+    IF $tryAgain == 1
+        MACRO EXEC ( "${macroPath}\deleteMeasurementIfFound.pwmacro", $refOne, $macroPath)
+        MACRO EXEC ( "${macroPath}\deleteMeasurementIfFound.pwmacro", $refTwo, $macroPath)
+        MACRO OUTPUT_ARGUMENT ( 5, $FAIL )
+        MACRO END ( "No Error" )
+    ENDIF
+ENDIF    
+
+
+# Select the reference cylinders, deselect everything else
+TREEVIEW OBJECT SELECT NONE
+MACRO EXEC ( "${macroPath}\featureExists.pwmacro", $refOne, featureExists, featureIndex )
+TREEVIEW FEATURE SELECT ( $featureIndex )
+MACRO EXEC ( "${macroPath}\featureExists.pwmacro", $refTwo, featureExists, featureIndex )
+TREEVIEW FEATURE SELECT ( $featureIndex )
+
+
+# Create the average cylinder (validated diametrical target)
+FEATURE PRIMITIVE CYLINDER FROM_CYLINDERS ( $featureName )
+MACRO OUTPUT_ARGUMENT ( 5, $PASS )

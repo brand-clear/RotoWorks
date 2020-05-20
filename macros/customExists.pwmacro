@@ -1,0 +1,51 @@
+version "5.0"
+# ======================================================
+# Prove the existence of a Custom Measurement.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : Custom Measurement name
+# $2 : Return value container
+# $3 : Index return value container
+# ------------------------------------------------------
+#
+# Returns
+# -------
+# $2 : int
+#     1 if the measurement exists, else 0.
+# $3 : double
+#     The index of the existing measurement.
+# ======================================================
+
+
+DECLARE maxIterations
+DECLARE index 1
+DECLARE measurementName
+DECLARE targetName $1
+DECLARE exists 1
+DECLARE doesNotExist 0
+
+
+# Set iteration limit to measurement count
+TREEVIEW CUSTOM_MEASUREMENT COUNT GET ( maxIterations )
+
+
+WHILE $index <= $maxIterations
+    
+    TREEVIEW CUSTOM_MEASUREMENT NAME GET ( $index, measurementName )
+    
+    IF $measurementName == $targetName
+        # Target measurement was found
+        MACRO OUTPUT_ARGUMENT ( 2, $exists )
+        MACRO OUTPUT_ARGUMENT ( 3, $index )
+        MACRO END ( "No Error" )
+    ENDIF
+    
+    ++ index
+    
+ENDWHILE
+
+
+# Target measurement was not found
+MACRO OUTPUT_ARGUMENT ( 2, $doesNotExist )

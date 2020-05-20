@@ -1,0 +1,84 @@
+version "5.0"
+# ======================================================
+# Create the Tree View objects required for width
+# measurements.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Alpha dimension label
+# $2 : double : Flatness tolerance
+# $3 : double : Parallelism tolerance
+# $4 : string : Absolute path to macros
+# ------------------------------------------------------
+#
+# Raises
+# ------
+# Error
+#     If the user cancels before creating the features
+# ------------------------------------------------------
+#
+# Notes
+# -----
+# A connection to the probing device is assumed.
+# ======================================================
+
+
+DECLARE label $1
+DECLARE labelArray
+DECLARE labelArraySize
+DECLARE flatnessTol $2
+DECLARE parallelismTol $3
+DECLARE pass
+DECLARE macroPath $4
+DECLARE errorStatus
+DECLARE tryAgain 1
+DECLARE widthA
+DECLARE widthB
+
+
+# Test variables
+# --------------
+#SET label "B"
+#SET flatnessTol .003
+#SET parallelismTol .020
+#SET macroPath "C:\Users\mcclbra\Desktop\development\rotoworks\macros"
+
+
+# Process input label, search for modifier
+MACRO STRING SPLIT ( $label, "*", labelArray )
+SET labelArraySize SIZE ( labelArray )
+
+
+# Delete any existing trace of dimension label
+MACRO EXEC ( "${macroPath}\cleanupAxialTarget.pwmacro", "Width ${labelArray[1]}", $macroPath)
+MACRO EXEC ( "${macroPath}\deleteWidthFeaturesIfFound.pwmacro", ${labelArray[1]}, $macroPath)
+
+
+# Check for custom (hand) measurement
+IF $labelArraySize == 2
+    MACRO EXEC ( "${macroPath}\getCustomMeasurement.pwmacro", "Width", $labelArray[1])
+    MACRO END ( "No Error" )
+ENDIF
+
+
+# Set width plane names
+SET widthA "Width ${labelArray[1]} 1"
+SET widthB "Width ${labelArray[1]} 2"
+
+
+# Probe first reference feature and check for error
+MACRO EXEC ( "${macroPath}\axialTargetHandler.pwmacro", $widthA, $flatnessTol, $parallelismTol, $macroPath )
+MACRO GET_ERROR_STATUS ( errorStatus )
+IF $errorStatus == "Error"
+    MACRO END ( "Error" )
+ENDIF
+
+
+# Probe second reference feature and check for error
+MACRO EXEC ( "${macroPath}\axialTargetHandler.pwmacro", $widthB, $flatnessTol, $parallelismTol, $macroPath )
+MACRO GET_ERROR_STATUS ( errorStatus )
+IF $errorStatus == "Error"
+    MACRO EXEC ( "${macroPath}\cleanupAxialTarget.pwmacro", $widthA, $macroPath)
+    MACRO END ( "Error" )
+ENDIF

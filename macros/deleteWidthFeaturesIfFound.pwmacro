@@ -1,0 +1,74 @@
+version "5.0"
+# ======================================================
+# Delete width features from the Tree View.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Alpha dimension label
+# $2 : string : Absolute path to macros
+# ------------------------------------------------------
+#
+# Returns
+# -------
+# $2 : int    : 1 if the object was deleted, else 0
+# ======================================================
+
+
+DECLARE label $1
+DECLARE treeViewIndex 1
+DECLARE featureCount
+DECLARE featureName
+DECLARE featureNameArray
+DECLARE featureNameArraySize
+DECLARE nameIndex
+DECLARE deleted 1
+DECLARE notDeleted 0
+DECLARE macroPath $2
+
+
+# Test variables
+# --------------
+#SET label "B"
+#SET macroPath "C:\Users\mcclbra\Desktop\development\rotoworks\macros"
+
+
+TREEVIEW FEATURE COUNT GET ( featureCount )
+
+
+WHILE $treeViewIndex <= $featureCount
+    
+    # Split feature name into separate words
+    TREEVIEW FEATURE NAME GET ( $treeViewIndex, featureName )
+    MACRO STRING SPLIT ( $featureName, " ", featureNameArray )
+    
+    SET featureNameArraySize SIZE ( featureNameArray )
+    SET nameIndex 1
+    
+    # Iterate over words in feature name
+    WHILE $nameIndex <= $featureNameArraySize
+        IF $featureNameArray[$nameIndex] == $label
+            
+            MACRO EXEC ( "${macroPath}\deleteFeature.pwmacro", $treeViewIndex )
+            # Calling this macro twice will remove both width planes since
+            # the indexes change after the first call/removal.
+            MACRO EXEC ( "${macroPath}\deleteFeature.pwmacro", $treeViewIndex )
+            
+            # Set output
+            MACRO OUTPUT_ARGUMENT ( 2, $deleted )
+            MACRO END ( "No Error" )
+            
+        ENDIF
+        
+        ++ nameIndex
+        CONTINUE
+        
+    ENDWHILE
+    
+    ++ treeViewIndex
+    CONTINUE
+    
+ENDWHILE
+
+MACRO OUTPUT_ARGUMENT ( 2, $notDeleted )
+

@@ -1,0 +1,60 @@
+version "5.0"
+# ======================================================
+# Facilitate the creation of datum cylinder A.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Absolute path to macros
+# ------------------------------------------------------
+#
+# Raises
+# ------
+# Error
+#     If the user cancelled before creating feature
+# ======================================================
+
+
+DECLARE macroPath $1
+DECLARE featureName "Datum Cylinder"
+DECLARE featureExists
+DECLARE featureIndex
+DECLARE tryAgain 1
+DECLARE errorStatus
+DECLARE pass
+
+
+# Test Variables
+# --------------
+#SET macroPath "C:\Users\mcclbra\Desktop\development\rotoworks\macros"
+
+
+MACRO EXEC ( "${macroPath}\featureExists.pwmacro", $featureName, featureExists, featureIndex )
+IF $featureExists == 1
+    # Datum cylinder is already present, exit
+    MACRO END ( "Error" )
+ENDIF
+
+
+WHILE $tryAgain == 1
+    
+    # Create cylinder feature
+    MACRO EXEC ( "${macroPath}\getDatumCylinder.pwmacro", $featureName, pass, $macroPath )
+    
+    MACRO GET_ERROR_STATUS ( errorStatus )
+    IF $errorStatus == "Error"
+        # User cancelled before creating the feature
+        MACRO END ( "No Error" )
+    ENDIF
+    
+    
+    IF $pass == 1
+        # Feature was accepted
+        TREEVIEW FEATURE PROPERTIES DATUM_LABEL ( "A", )
+        MACRO END ( "No Error" )
+    ELSE
+        # Reprobe
+        CONTINUE
+    ENDIF
+    
+ENDWHILE

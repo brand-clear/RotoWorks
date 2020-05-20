@@ -1,0 +1,50 @@
+version "5.0"
+# ======================================================
+# Prove the existence of a feature.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Feature name
+# $2 : empty  : Existence return value container
+# $3 : int    : Index return value container
+# ------------------------------------------------------
+#
+# Returns
+# -------
+# $2 : int    : 1 if the feature exists, else 0
+# $3 : int    : Index of the existing feature
+# ======================================================
+
+
+DECLARE maxIterations
+DECLARE index 1
+DECLARE featureName
+DECLARE targetName $1
+DECLARE exists 1
+DECLARE doesNotExist 0
+
+
+# Set iteration limit to feature count
+TREEVIEW FEATURE COUNT GET ( maxIterations )
+
+
+WHILE $index <= $maxIterations
+    
+    TREEVIEW FEATURE NAME GET ( $index, featureName )
+    
+    IF $featureName == $targetName
+        # Target feature was found
+        MACRO OUTPUT_ARGUMENT ( 2, $exists )
+        MACRO OUTPUT_ARGUMENT ( 3, $index )
+        MACRO END ( "No Error" )
+    ENDIF
+    
+    ++ index
+    
+ENDWHILE
+
+
+# Target feature was not found
+MACRO OUTPUT_ARGUMENT ( 2, $doesNotExist )
+

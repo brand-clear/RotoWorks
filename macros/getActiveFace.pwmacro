@@ -1,0 +1,99 @@
+version "5.0"
+# ======================================================
+# Create a validated Active Face datum plane.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Feature name
+# $2 : int    : Validation container
+# $3 : string : Absolute path to macros
+# ------------------------------------------------------
+#
+# Returns
+# -------
+# $2 : int    : 1 if the target is accepted, else 0
+# ------------------------------------------------------
+#
+# Raises
+# ------
+# Error
+#     If the user cancels before creating the feature
+# ------------------------------------------------------
+#
+# Notes
+# -----
+# A connection to the probing device is assumed.
+# ======================================================
+
+
+DECLARE featureName $1
+DECLARE refOne "${featureName} Ref 1"
+DECLARE refTwo "${featureName} Ref 2"
+DECLARE refDistance "${featureName} Ref Dist"
+DECLARE flatnessTol 0.0010
+DECLARE distanceTol 0.0020
+DECLARE macroPath $3
+DECLARE measuredDistance
+DECLARE measuredFlatness
+DECLARE featureExists
+DECLARE featureIndex
+DECLARE tryAgain
+DECLARE errorStatus
+DECLARE PASS 1
+DECLARE FAIL 0
+
+
+# Test variables
+# --------------
+#SET macroPath "C:\Users\mcclbra\Desktop\development\rotoworks\macros"
+
+
+# Remove conflicting measurements
+MACRO EXEC ( "${macroPath}\cleanupAxialTarget.pwmacro", $featureName, $macroPath)
+
+
+
+# Get the initial target reference
+MACRO EXEC ( "${macroPath}\getPlaneFeature.pwmacro", $refOne, $flatnessTol, measuredFlatness, $macroPath )
+MACRO GET_ERROR_STATUS ( errorStatus )
+IF  $errorStatus == "Error"
+    # User cancelled before creating feature
+    MACRO END ( "Error" ) 
+ENDIF
+
+
+# Get the second target reference
+MACRO EXEC ( "${macroPath}\getPlaneFeature.pwmacro", $refTwo, $flatnessTol, measuredFlatness, $macroPath )
+MACRO GET_ERROR_STATUS ( errorStatus )
+IF  $errorStatus == "Error"
+    # User cancelled before creating feature
+    MACRO EXEC ( "${macroPath}\deleteMeasurementIfFound.pwmacro", $refOne, $macroPath)
+    MACRO END ( "Error" ) 
+ENDIF
+
+
+# Verify the features were compensated correctly by measuring the distance between them
+MACRO EXEC ( "${macroPath}\getDistance.pwmacro", $refOne, $refTwo, $refDistance, measuredDistance )
+IF $measuredDistance > $distanceTol
+    MACRO INPUT QUESTION ( tryAgain, {"The distance between the reference planes exceeds the tolerance of ${distanceTol}.", "Do you want to reprobe?"})
+    IF $tryAgain == 1
+        MACRO EXEC ( "${macroPath}\deleteMeasurementIfFound.pwmacro", $refOne, $macroPath)
+        MACRO EXEC ( "${macroPath}\deleteMeasurementIfFound.pwmacro", $refTwo, $macroPath)
+        MACRO EXEC ( "${macroPath}\deleteMeasurementIfFound.pwmacro", $refDistance, $macroPath)
+        MACRO OUTPUT_ARGUMENT ( 2, $FAIL )
+    ENDIF
+ENDIF
+
+
+# Select the reference planes, deselect everything else
+TREEVIEW OBJECT SELECT NONE
+MACRO EXEC ( "${macroPath}\featureExists.pwmacro", $refOne, featureExists, featureIndex )
+TREEVIEW FEATURE SELECT ( $featureIndex )
+MACRO EXEC ( "${macroPath}\featureExists.pwmacro", $refTwo, featureExists, featureIndex )
+TREEVIEW FEATURE SELECT ( $featureIndex )
+
+
+# Create the average plane (validated axial target)
+FEATURE PRIMITIVE PLANE FROM_PLANES ( $featureName )
+MACRO OUTPUT_ARGUMENT ( 2, $PASS )

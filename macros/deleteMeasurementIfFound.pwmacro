@@ -1,0 +1,34 @@
+version "5.0"
+# ======================================================
+# Delete an existing PolyWorks measurement.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Feature or Custom Measurement name
+# $2 : string : Absolute path to macros
+# ======================================================
+
+
+DECLARE targetName $1
+DECLARE index
+DECLARE measExists
+DECLARE featureExists
+DECLARE reprobe
+DECLARE macroPath $2
+
+
+# Features
+MACRO EXEC ( "${macroPath}\featureExists.pwmacro", $targetName, featureExists, index )
+IF $featureExists == 1
+    MACRO EXEC ( "${macroPath}\deleteFeature.pwmacro", $index )
+    MACRO END ( "No Error" )
+ENDIF
+
+
+# Custom Measurements
+MACRO EXEC ( "${macroPath}\customExists.pwmacro", $targetName, measExists, index )
+IF $measExists == 1
+    MACRO EXEC ( "${macroPath}\deleteCustom.pwmacro", $index )
+    
+ENDIF

@@ -1,0 +1,70 @@
+version "5.0"
+# ======================================================
+# Facilitate the creation of a validated axial 
+# inspection target.
+#
+# This parent method guides the inspector through
+# probing and, if necessary, reprobing, until the
+# inspector is satisfied with the result.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Feature name
+# $2 : double : Flatness tolerance
+# $3 : double : Parallelism tolerance
+# $4 : string : Absolute path to macros
+# ------------------------------------------------------
+#
+# Raises
+# ------
+# Error
+#     If the user cancels before creating the feature
+# ------------------------------------------------------
+#
+# Notes
+# -----
+# A connection to the probing device is assumed.
+# ======================================================
+
+
+DECLARE featureName $1
+DECLARE flatnessTol $2
+DECLARE parallelismTol $3
+DECLARE pass
+DECLARE tryAgain 1
+DECLARE errorStatus
+DECLARE macroPath $4
+
+
+# Test variables
+# --------------
+#SET featureName "Stage 1 Eye Face"
+#SET flatnessTol 0.016
+#SET parallelismTol 0.020
+#SET macroPath "C:\Users\mcclbra\Desktop\development\rotoworks\macros"
+
+
+WHILE $tryAgain == 1
+    
+    # Probe feature
+    MACRO EXEC ( "${macroPath}\getAxialTarget.pwmacro", $featureName, $flatnessTol, $parallelismTol, pass, $macroPath)
+    
+    
+    MACRO GET_ERROR_STATUS ( errorStatus )
+    IF $errorStatus == "Error"
+        # User cancelled before creating the feature
+        MACRO END ( "Error" )
+    ENDIF
+    
+    
+    IF $pass == 1
+        # Feature was accepted
+        MACRO END ( "No Error" )
+    ELSE
+        # Reprobe
+        CONTINUE
+    ENDIF
+    
+    
+ENDWHILE

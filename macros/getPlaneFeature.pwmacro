@@ -1,0 +1,87 @@
+version "5.0"
+# ======================================================
+# Probe a plane feature.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Feature name
+# $2 : double : Flatness tolerance
+# $3 : empty  : Measured flatness container
+# $4 : string : Absolute path to macros
+# ------------------------------------------------------
+#
+# Returns
+# -------
+# $3 : double : Measured flatness, if accepted
+# ------------------------------------------------------
+#
+# Raises
+# ------
+# Error
+#     If the user cancels before creating the feature
+# ------------------------------------------------------
+#
+# Notes
+# -----
+# A connection to the probing device is assumed.
+# ======================================================
+
+
+DECLARE name $1
+DECLARE macroPath $4
+DECLARE featureExists
+DECLARE featureIndex
+DECLARE flatnessTol $2
+DECLARE measuredFlatness
+DECLARE pass
+DECLARE tryAgain 1
+
+
+# Test variables
+# --------------
+#SET name "test plane"
+#SET flatnessTol 0.002
+#SET macroPath "C:\Users\mcclbra\Desktop\development\rotoworks\macros"
+
+
+# Set options
+FEATURE PRIMITIVE PLANE OPTIONS PROBE METHOD ( "Standard" )
+FEATURE PRIMITIVE PLANE OPTIONS PROBE STANDARD COMPENSATION METHOD ( "From Device" )
+
+
+WHILE $tryAgain == 1
+    
+    # Probe the plane feature
+    FEATURE PRIMITIVE PLANE PROBE ( "Measured", $name )
+    
+    # Verify the feature was recorded
+    MACRO EXEC ( "${macroPath}\featureExists.pwmacro", $name, featureExists, featureIndex )
+    
+    IF $featureExists == 1
+        # Get flatness validation
+        MACRO EXEC ( "${macroPath}\getFlatness.pwmacro", $flatnessTol, pass, measuredFlatness )
+        
+        IF $pass == 1
+            # Success
+            MACRO OUTPUT_ARGUMENT ( 3, $measuredFlatness )
+            MACRO END ( "No Error" )
+        ELSE
+            # Reprobe
+            CONTINUE
+        ENDIF   
+        
+    ELSE
+        # Prompt the user if plane was not recorded
+        MACRO INPUT QUESTION ( tryAgain, {"${name} was not created.", "Would you like to try again?"} )
+        IF $tryAgain == 1
+            # Reprobe
+            CONTINUE
+        ELSE
+            # Exit macro if user cancels this operation
+            MACRO END ( "Error" )
+        ENDIF
+        
+    ENDIF
+    
+ENDWHILE

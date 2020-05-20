@@ -1,0 +1,58 @@
+version "5.0"
+# ======================================================
+# Measure the flatness of a plane feature.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : double : Flatness tolerance
+# $2 : empty  : Validation container
+# $3 : empty  : Measured flatness container
+# ------------------------------------------------------
+#
+# Returns
+# -------
+# $2 : int    : 1 if the flatness is accepted, else 0
+# $3 : double : Measured flatness, if accepted
+# ------------------------------------------------------
+#
+# Notes
+# -----
+# An existing plane is assumed to be the one and only
+# selected feature.
+# ======================================================
+
+
+DECLARE tolerance $1
+DECLARE controlName
+DECLARE measuredFlatness
+DECLARE reprobe
+DECLARE PASS 1
+DECLARE FAIL 0
+DECLARE errorStatus
+
+
+# Set / get flatness values
+MEASURE CONTROL ADD ( "GD&T", "Flatness", controlName )
+MEASURE CONTROL TOLERANCE_ZONE LIMITS ( $controlName, $tolerance, , , , )
+MEASURE CONTROL MEASURED GET ( $controlName, measuredFlatness )
+
+
+# Check flatness against the tolerance
+IF $measuredFlatness > $tolerance
+    MACRO INPUT QUESTION ( reprobe, {"The measured flatness exceeds the assigned tolerance of ${tolerance}.", "Do you want to reprobe?"} )
+    
+    IF $reprobe == 1
+        # Remove flatness control and return a FAIL
+        MEASURE CONTROL REMOVE ( $controlName )
+        MACRO OUTPUT_ARGUMENT ( 2, $FAIL )
+        MACRO END ( "No Error" )
+    ENDIF
+    
+ENDIF    
+
+
+# User has accepted the deviation, return PASS     
+MACRO OUTPUT_ARGUMENT ( 2, $PASS )
+MACRO OUTPUT_ARGUMENT ( 3, $measuredFlatness )
+

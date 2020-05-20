@@ -1,0 +1,32 @@
+version "5.0"
+# ======================================================
+# Remove residual Distance features from the Tree View.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Feature name
+# ======================================================
+
+DECLARE partialName $1
+DECLARE distanceName
+DECLARE distanceCount
+DECLARE match
+DECLARE counter 1
+
+TREEVIEW OBJECT SELECT NONE
+
+TREEVIEW FEATURE DISTANCE COUNT GET ( distanceCount )
+
+WHILE $counter <= $distanceCount
+    TREEVIEW FEATURE DISTANCE NAME GET ( $counter, distanceName )
+    MACRO STRING FIND_FIRST ( $distanceName, $partialName, , match )
+    IF  $match != 0
+        TREEVIEW FEATURE DISTANCE SELECT ( $counter )
+    ENDIF
+    ++counter
+ENDWHILE
+
+
+EDIT OBJECT DELETE (  )   
+

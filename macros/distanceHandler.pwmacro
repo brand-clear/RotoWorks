@@ -1,0 +1,62 @@
+version "5.0"
+# ======================================================
+# Create the Tree View objects required for distance
+# measurements.
+#
+# In this context, the word "distance" refers to an
+# axial inspection target that is referenced from the 
+# active face, not a PolyWorks "Distance" feature.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Alpha dimension label
+# $2 : double : Flatness tolerance
+# $3 : double : Parallelism tolerance
+# $4 : string : Absolute path to macros
+# ------------------------------------------------------
+# 
+# Notes
+# -----
+# A connection to the probing device is assumed.
+# ======================================================
+
+
+DECLARE label $1
+DECLARE labelArray
+DECLARE labelArraySize
+DECLARE flatnessTol $2
+DECLARE parallelismTol $3
+DECLARE macroPath $4
+DECLARE errorStatus
+DECLARE tryAgain 1
+DECLARE featureName
+
+
+# Test variables
+# --------------
+#SET label "B"
+#SET flatnessTol .003
+#SET parallelismTol .020
+#SET macroPath "C:\Users\mcclbra\Desktop\development\rotoworks\macros"
+
+
+# Process input label, search for modifier
+MACRO STRING SPLIT ( $label, "*", labelArray )
+
+SET labelArraySize SIZE ( labelArray )
+SET featureName "Distance ${labelArray[1]}"
+
+
+# Delete any existing trace of dimension label
+MACRO EXEC ( "${macroPath}\cleanupAxialTarget.pwmacro", $featureName, $macroPath )
+MACRO EXEC ( "${macroPath}\deleteWidthFeaturesIfFound.pwmacro", ${labelArray[1]}, $macroPath )
+
+
+IF $labelArraySize == 2
+    # Custom (hand) measurement
+    MACRO EXEC ( "${macroPath}\getCustomMeasurement.pwmacro", "Distance", $labelArray[1] )
+ELSE
+    # Probed measurement
+    MACRO EXEC ( "${macroPath}\axialTargetHandler.pwmacro", $featureName, $flatnessTol, $parallelismTol, $macroPath )
+ENDIF

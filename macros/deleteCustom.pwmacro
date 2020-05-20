@@ -1,0 +1,14 @@
+version "5.0"
+# ======================================================
+# Delete a Tree View Custom Measurement.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : Custom Measurement index
+# ======================================================
+
+
+TREEVIEW OBJECT SELECT NONE
+TREEVIEW CUSTOM_MEASUREMENT SELECT ( $1 )
+EDIT OBJECT DELETE (  )

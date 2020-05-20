@@ -1,0 +1,69 @@
+version "5.0"
+# ======================================================
+# Create a cylinder feature and qualify with respect to 
+# a datum A.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Feature name
+# $2 : double : Cylindricity tolerance
+# $3 : double : Parallelism tolerance
+# $4 : int    : Validation container
+# $5 : double : Measured diameter container
+# $6 : string : Absolute path to macros
+# ------------------------------------------------------
+#
+# Returns
+# -------
+# $4 : int    : 1 if the feature is accepted, else 0
+# $5 : double : Measured diameter
+# ------------------------------------------------------
+#
+# Notes
+# -----
+# A connection to the probing device is assumed.
+# ======================================================
+
+
+DECLARE featureName "$1"
+DECLARE cylindricityTol $2
+DECLARE parallelismTol $3
+DECLARE macroPath $6
+DECLARE errorStatus
+DECLARE measuredCylindricity
+DECLARE measuredParallelism
+DECLARE parallelismPass
+DECLARE measuredDiameter
+DECLARE tryAgain 1
+DECLARE PASS 1
+DECLARE FAIL 0
+
+
+WHILE $tryAgain == 1
+    
+    # Get the plane feature
+    MACRO EXEC ( "${macroPath}\getCylinderFeature.pwmacro", $featureName, cylindricityTol, measuredCylindricity, measuredDiameter, $macroPath )
+    
+    MACRO GET_ERROR_STATUS ( errorStatus )
+    IF  $errorStatus == "Error"
+        # User cancelled before creating feature
+        MACRO OUTPUT_ARGUMENT ( 4, $FAIL )
+        MACRO END ( "No Error" ) 
+    ENDIF
+    
+    
+    # Check parallelism to datum plane A
+    MACRO EXEC ( "${macroPath}\getParallelism.pwmacro", parallelismTol, parallelismPass, measuredParallelism )
+    IF $parallelismPass == 1
+        MEASURE CONTROL MEASURED GET ( "Diameter", measuredDiameter )
+        MACRO OUTPUT_ARGUMENT ( 4, $PASS )
+        MACRO OUTPUT_ARGUMENT ( 5, $measuredDiameter )
+        MACRO END ( "No Error" ) 
+    ELSE
+        # Reprobe to correct parallelism
+        MACRO EXEC ( "${macroPath}\deleteMeasurementIfFound.pwmacro", $featureName, $macroPath)
+        CONTINUE 
+    ENDIF        
+    
+ENDWHILE

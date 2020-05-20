@@ -1,0 +1,61 @@
+version "5.0"
+# ======================================================
+# Enforce creating the Active Face datum plane A.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Absolute path to macros
+# ------------------------------------------------------
+#
+# Raises
+# ------
+# Error
+#     If the user cancelled before creating feature
+# ======================================================
+
+DECLARE featureName "Active Face"
+DECLARE activeExists
+DECLARE activeIndex
+DECLARE macroPath $1
+DECLARE tryAgain 1
+DECLARE errorStatus
+DECLARE pass
+
+
+# Test Variables
+# --------------
+#SET macroPath "C:\Users\mcclbra\Desktop\development\rotoworks\macros"
+
+
+MACRO EXEC ( "${macroPath}\featureExists.pwmacro", $featureName, activeExists, activeIndex )
+
+
+IF $activeExists == 1
+    # Active face is already present, exit
+    MACRO END ( "Error" )
+ENDIF
+
+
+WHILE $tryAgain == 1
+    
+    # Create plane feature
+    MACRO EXEC ( "${macroPath}\getActiveFace.pwmacro", $featureName, pass, $macroPath )
+    
+    MACRO GET_ERROR_STATUS ( errorStatus )
+    IF $errorStatus == "Error"
+        # User cancelled before creating the feature
+        MACRO END ( "No Error" )
+    ENDIF
+    
+    
+    IF $pass == 1
+        # Feature was accepted
+        TREEVIEW FEATURE PROPERTIES DATUM_LABEL ( "A", )
+        MACRO END ( "No Error" )
+    ELSE
+        # Reprobe
+        CONTINUE
+    ENDIF
+    
+ENDWHILE

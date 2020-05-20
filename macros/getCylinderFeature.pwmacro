@@ -1,0 +1,88 @@
+version "5.0"
+# ======================================================
+# Probe a cylinder feature.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Feature name
+# $2 : double : Cylindricity tolerance
+# $3 : empty  : Measured cylindricity container
+# $4 : empty  : Measured diameter container
+# $5 : string : Absolute path to macros
+# ------------------------------------------------------
+#
+# Returns
+# -------
+# $3 : double : Measured cylindricity
+# $4 : double : Measured diameter
+# ------------------------------------------------------
+#
+# Raises
+# ------
+# Error
+#     If the user cancels before creating the feature
+# ------------------------------------------------------
+#
+# Notes
+# -----
+# A connection to the probing device is assumed.
+# ======================================================
+
+
+DECLARE name $1
+DECLARE cylindricityTol $2
+DECLARE macroPath $5
+DECLARE featureExists
+DECLARE featureIndex
+DECLARE measuredCylindricity
+DECLARE measuredDiameter
+DECLARE tryAgain 1
+DECLARE pass
+
+
+
+# Test variables
+# --------------
+#SET name "test cylinder"
+#SET cylindricityTol 0.005
+#SET macroPath "C:\Users\mcclbra\Desktop\development\rotoworks\macros"
+
+
+WHILE $tryAgain == 1
+    
+    # Probe the plane feature
+    FEATURE PRIMITIVE CYLINDER PROBE ( "Measured", $name )
+    
+    # Verify the feature was recorded
+    MACRO EXEC ( "${macroPath}\featureExists.pwmacro", $name, featureExists, featureIndex )
+    
+    IF $featureExists == 1
+        # Get cylindricity validation
+        MACRO EXEC ( "${macroPath}\getCylindricity.pwmacro", $cylindricityTol, pass, measuredCylindricity )
+        
+        IF $pass == 1
+            # Success
+            MEASURE CONTROL MEASURED GET ( "Diameter", measuredDiameter )
+            MACRO OUTPUT_ARGUMENT ( 3, $measuredCylindricity )
+            MACRO OUTPUT_ARGUMENT ( 4, $measuredDiameter )
+            MACRO END ( "No Error" )
+        ELSE
+            # Reprobe
+            CONTINUE
+        ENDIF   
+        
+    ELSE
+        # Prompt the user if plane was not recorded
+        MACRO INPUT QUESTION ( tryAgain, {"${name} was not created.", "Would you like to try again?"} )
+        IF $tryAgain == 1
+            # Reprobe
+            CONTINUE
+        ELSE
+            # Exit macro if user cancels this operation
+            MACRO END ( "Error" )
+        ENDIF
+        
+    ENDIF
+    
+ENDWHILE

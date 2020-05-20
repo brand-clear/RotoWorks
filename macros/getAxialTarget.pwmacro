@@ -1,0 +1,104 @@
+version "5.0"
+# ======================================================
+# Create a validated axial inspection target.
+#
+# The inspection target is the average of (2) individual
+# plane features that either, A) passed the validation 
+# metrics, or B) were approved by the inspector.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Feature name
+# $2 : double : Flatness tolerance
+# $3 : double : Parallelism tolerance
+# $4 : int    : Validation container
+# $5 : string : Absolute path to macros
+# ------------------------------------------------------
+#
+# Returns
+# -------
+# $4 : int    : 1 if the target is accepted, else 0
+# ------------------------------------------------------
+#
+# Raises
+# ------
+# Error
+#     If the user cancels before creating both 
+#     reference features
+# ------------------------------------------------------
+#
+# Notes
+# -----
+# A connection to the probing device is assumed.
+# ======================================================
+
+
+DECLARE featureName $1
+DECLARE refOne "${featureName} Ref 1"
+DECLARE refTwo "${featureName} Ref 2"
+DECLARE refDistance "${featureName} Ref Dist"
+DECLARE flatnessTol $2
+DECLARE parallelismTol $3
+DECLARE distanceTol 0.031
+DECLARE macroPath $5
+DECLARE measuredDistance
+DECLARE featureExists
+DECLARE featureIndex
+DECLARE tryAgain
+DECLARE accepted
+DECLARE PASS 1
+DECLARE FAIL 0
+
+
+# Test variables
+# --------------
+#SET featureName "Test Plane"
+#SET flatnessTol 0.005
+#SET parallelismTol 0.016
+#SET macroPath "C:\Users\mcclbra\Desktop\development\rotoworks\macros"
+
+
+# Remove conflicting measurements
+MACRO EXEC ( "${macroPath}\cleanupAxialTarget.pwmacro", $featureName, $macroPath)
+
+
+# Get the initial target reference
+MACRO EXEC ( "${macroPath}\getDependentPlaneFeature.pwmacro", $refOne, $flatnessTol, $parallelismTol, accepted, $macroPath )
+IF $accepted == 0
+    MACRO END ( "Error" )
+ENDIF
+
+
+# Get the second target reference
+MACRO EXEC ( "${macroPath}\getDependentPlaneFeature.pwmacro", $refTwo, $flatnessTol, $parallelismTol, accepted, $macroPath )
+IF $accepted == 0
+    MACRO EXEC ( "${macroPath}\cleanupAxialTarget.pwmacro", $featureName, $macroPath)
+    MACRO END ( "Error" )
+ENDIF
+
+
+# Verify the reference features were compensated correctly by measuring the distance between them
+MACRO EXEC ( "${macroPath}\getDistance.pwmacro", $refOne, $refTwo, $refDistance, measuredDistance )
+IF $measuredDistance > $distanceTol
+    MACRO INPUT QUESTION ( tryAgain, {"The distance between the reference planes exceeds the tolerance of ${distanceTol}.", "Do you want to reprobe?"})
+    IF $tryAgain == 1
+        MACRO EXEC ( "${macroPath}\cleanupAxialTarget.pwmacro", $featureName, $macroPath)
+        MACRO OUTPUT_ARGUMENT ( 4, $FAIL )
+        MACRO END ( "No Error" )
+    ENDIF
+ENDIF
+
+
+# Select the reference planes, deselect everything else
+TREEVIEW OBJECT SELECT NONE
+MACRO EXEC ( "${macroPath}\featureExists.pwmacro", $refOne, featureExists, featureIndex )
+TREEVIEW FEATURE SELECT ( $featureIndex )
+MACRO EXEC ( "${macroPath}\featureExists.pwmacro", $refTwo, featureExists, featureIndex )
+TREEVIEW FEATURE SELECT ( $featureIndex )
+
+
+# Create the average plane (validated axial target)
+FEATURE PRIMITIVE PLANE FROM_PLANES ( $featureName )
+MEASURE CONTROL ADD ( "Dimensional", "Centroid X" )
+MACRO OUTPUT_ARGUMENT ( 4, $PASS )

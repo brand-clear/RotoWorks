@@ -1,0 +1,40 @@
+version "5.0"
+# ======================================================
+# Measure the distance between two features.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Feature name 1
+# $2 : string : Feature name 2
+# $3 : string : Distance feature name
+# $4 : empty  : Measured distance container
+# ------------------------------------------------------
+#
+# Returns
+# -------
+# $4 : double : Measured distance
+# ======================================================
+
+
+DECLARE featureName1 $1
+DECLARE featureName2 $2
+DECLARE distanceName $3
+DECLARE distanceControl
+DECLARE measuredDistance
+
+
+# Test variables
+# --------------
+#SET featureName1 "plane 1"
+#SET featureName2 "plane 1 ref"
+#SET distanceName "plane 1 check"
+
+
+FEATURE DISTANCE CREATE ( $featureName1, $featureName2, $distanceName )
+MEASURE CONTROL ADD ( "Dimensional", "3D Distance", distanceControl )
+MEASURE CONTROL MEASURED GET ( $distanceControl, measuredDistance )
+MACRO OUTPUT_ARGUMENT ( 4, $measuredDistance )
+
+
+

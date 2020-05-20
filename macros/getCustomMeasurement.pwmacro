@@ -1,0 +1,35 @@
+version "5.0"
+# ======================================================
+# Create a custom measurement.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Dimensional context 
+#     {"Width", "Distance"}
+# $2 : string : Alpha dimension label
+# ======================================================
+
+
+DECLARE measurementName "$1 $2"
+DECLARE handMeas
+
+
+# Test variables
+# --------------
+#DECLARE measurementName "Width A"
+
+
+# Get hand measurement from user
+MACRO INPUT DOUBLE ( handMeas, , "${measurementName} Measurement:", )
+
+
+IF $handMeas == 0.0
+    # User cancellation
+    MACRO END ( "No Error" )
+ENDIF
+
+
+# Create custom measurement
+MEASURE CUSTOM_MEASUREMENT NUMERICAL CREATE NUMERICALLY ( 0, 0, 0, , , , $measurementName )
+MEASURE CONTROL MEASURED ( "Custom", $handMeas, $measurementName )

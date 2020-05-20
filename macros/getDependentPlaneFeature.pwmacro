@@ -1,0 +1,64 @@
+version "5.0"
+# ======================================================
+# Create a plane feature and qualify with respect to a 
+# datum A.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Feature name
+# $2 : double : Flatness tolerance
+# $3 : double : Parallelism tolerance
+# $4 : int    : Validation container
+# $5 : string : Absolute path to macros
+# ------------------------------------------------------
+#
+# Returns
+# -------
+# $4 : int    : 1 if the target is accepted, else 0
+# ------------------------------------------------------
+#
+# Notes
+# -----
+# A connection to the probing device is assumed.
+# ======================================================
+
+
+DECLARE targetName "$1"
+DECLARE macroPath $5
+DECLARE errorStatus
+DECLARE measuredFlatness
+DECLARE flatnessTol $2
+DECLARE measuredParallelism
+DECLARE parallelismTol $3
+DECLARE parallelismPass
+DECLARE tryAgain 1
+DECLARE PASS 1
+DECLARE FAIL 0
+
+
+WHILE $tryAgain == 1
+    
+    # Get the plane feature
+    MACRO EXEC ( "${macroPath}\getPlaneFeature.pwmacro", $targetName, flatnessTol, measuredFlatness, $macroPath )
+    MACRO GET_ERROR_STATUS ( errorStatus )
+    IF  $errorStatus == "Error"
+        # User cancelled before creating feature
+        MACRO OUTPUT_ARGUMENT ( 4, $FAIL )
+        MACRO END ( "No Error" ) 
+    ENDIF
+    
+    
+    # Check parallelism to datum plane A
+    MACRO EXEC ( "${macroPath}\getParallelism.pwmacro", parallelismTol, parallelismPass, measuredParallelism )
+    IF $parallelismPass == 1
+        MACRO OUTPUT_ARGUMENT ( 4, $PASS )
+        MACRO END ( "No Error" ) 
+    ELSE
+        # Reprobe to correct parallelism
+        MACRO EXEC ( "${macroPath}\deleteMeasurementIfFound.pwmacro", $targetName, $macroPath)
+        CONTINUE 
+    ENDIF        
+    
+ENDWHILE
+

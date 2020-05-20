@@ -1,0 +1,80 @@
+version "5.0"
+# ======================================================
+# Measure the cylindricity of a cylinder feature.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : double : Cylindricity tolerance
+# $2 : empty  : Validation container
+# $3 : empty  : Measured cylindricity container
+# ------------------------------------------------------
+#
+# Returns
+# -------
+# $2 : int    : 1 if cylindricity is accepted, else 0
+# $3 : double : Measured cylindricity, if accepted
+# ------------------------------------------------------
+#
+# Notes
+# -----
+# An existing cylinder is assumed to be the one and only
+# selected feature.
+# ======================================================
+
+
+DECLARE controlName
+DECLARE cylindricityTol $1
+DECLARE cylindricityMeasured
+DECLARE reprobe
+DECLARE PASS 1
+DECLARE FAIL 0
+
+
+# Test variables
+# --------------
+#SET cylindricityTol .005
+
+
+# Set \ get cylindricity values
+MEASURE CONTROL ADD ( "GD&T", "Cylindricity", controlName )
+MEASURE CONTROL TOLERANCE_ZONE LIMITS ( $controlName, $cylindricityTol )
+MEASURE CONTROL MEASURED GET ( $controlName, cylindricityMeasured )
+
+
+# Check cylindricity against the tolerance
+IF $cylindricityMeasured >= $cylindricityTol
+    MACRO INPUT QUESTION ( reprobe, {"The measured cylindricity (${cylindricityMeasured}) exceeds the allowable tolerance of ${cylindricityTol}.", "Do you want to reprobe?"}  )
+    
+    IF $reprobe == 1
+        # Remove cylindriticy control and return FAIL
+        MEASURE CONTROL REMOVE ( $controlName )
+        MACRO OUTPUT_ARGUMENT ( 2, $FAIL )
+        MACRO END ( "No Error" )
+    ENDIF
+    
+ENDIF
+
+
+# User has accepted the deviation, return PASS
+MACRO OUTPUT_ARGUMENT ( 2, $PASS )
+MACRO OUTPUT_ARGUMENT ( 3, $cylindricityMeasured )
+
+
+
+
+
+
+
+
+#MEASURE CONTROL ADD ( "GD&T", "Cylindricity", "Cylindricity 1", )
+#MEASURE CONTROL TOLERANCE_ZONE LIMITS ( "Cylindricity 1", 0.005, , , , )
+#MEASURE CONTROL MEASURED GET (  )
+#
+#
+#
+#
+#
+#MEASURE CONTROL ADD ( "GD&T", "Parallelism", "Parallelism 1", )
+#MEASURE CONTROL TOLERANCE_ZONE LIMITS ( "Parallelism 1", 0.02, , , , )
+#MEASURE CONTROL DATUM_FEATURES ( "Parallelism 1", "A", , , )

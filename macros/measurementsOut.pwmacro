@@ -1,0 +1,44 @@
+version "5.0"
+#==========================================================
+# Export measurement items to a CSV file.
+# ---------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : Absolute path to the CSV file that receives the 
+#     exported data.
+#==========================================================
+
+
+DECLARE feat_index
+DECLARE cust_index
+DECLARE csvPath $1
+
+# Test Variables
+# --------------
+#SET csvPath "C:\\Users\\mcclbra\\Desktop\\Diameters.csv"
+
+# Set item destination
+TREEVIEW OBJECT SELECT NONE
+REPORT_ITEM OPTIONS DESTINATION ( "Tree View" )
+
+# Remove existing report items
+TREEVIEW REPORT_ITEM SELECT ALL
+EDIT OBJECT DELETE (  )
+
+# Send Feature items
+TREEVIEW FEATURE SELECT ALL ( "On" )
+REPORT_ITEM TABLE FROM_SELECTED_OBJECTS USING_TEMPLATE ( "RotoworksFeatures", "User" )
+TREEVIEW OBJECT SELECT NONE
+
+# Send Custom Measurement items
+TREEVIEW CUSTOM_MEASUREMENT SELECT ALL
+REPORT_ITEM TABLE FROM_SELECTED_OBJECTS USING_TEMPLATE ( "RotoworksCustoms", "User" )
+TREEVIEW OBJECT SELECT NONE
+
+# Export items to CSV
+TREEVIEW REPORT_ITEM INDEX GET ( "Feature", feat_index )
+TREEVIEW REPORT_ITEM INDEX GET ( "Custom Measurement", cust_index )
+TREEVIEW REPORT_ITEM SELECT ( $feat_index )
+TREEVIEW REPORT_ITEM SELECT ( $cust_index )
+FILE EXPORT_REPORT CSV_FILE ( "${csvPath}" )

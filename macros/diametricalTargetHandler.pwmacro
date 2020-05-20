@@ -1,0 +1,65 @@
+version "5.0"
+# ======================================================
+# Facilitate the creation and validation of diametrical 
+# inspection targets.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Feature name
+# $2 : string : Absolute path to macros
+# ------------------------------------------------------
+#
+# Raises
+# ------
+# Error
+#     If the user cancels before creating the feature
+# ------------------------------------------------------
+#
+# Notes
+# -----
+# A connection to the probing device is assumed.
+# ======================================================
+
+
+DECLARE featureName $1
+DECLARE macroPath $2
+DECLARE cylindricityTol 0.0050
+DECLARE parallelismTol 0.0100
+DECLARE deviationTol 0.0040
+DECLARE pass
+DECLARE tryAgain 1
+DECLARE errorStatus
+
+
+# Test variables
+# --------------
+#SET featureName "TE Journal"
+#SET cylindricityTol 0.016
+#SET parallelismTol 0.020
+#SET deviationTol 0.0020
+#SET macroPath "C:\Users\mcclbra\Desktop\development\rotoworks\macros"
+
+
+WHILE $tryAgain == 1
+    
+    # Probe cylindrical features
+    MACRO EXEC ( "${macroPath}\getDiametricalTarget.pwmacro", $featureName, $cylindricityTol, $parallelismTol, $deviationTol, pass, $macroPath )
+    
+    MACRO GET_ERROR_STATUS ( errorStatus )
+    IF $errorStatus == "Error"
+        # User cancelled before creating the feature
+        MACRO END ( "Error" )
+    ENDIF
+    
+    
+    IF $pass == 1
+        # Feature was accepted
+        MACRO END ( "No Error" )
+    ELSE
+        # Reprobe
+        CONTINUE
+    ENDIF
+    
+    
+ENDWHILE

@@ -1,0 +1,29 @@
+version "5.0"
+# ======================================================
+# Remove the features associated with an axial 
+# inspection target.
+# ------------------------------------------------------
+#
+# Parameters
+# ----------
+# $1 : string : Feature name
+# $2 : string : Absolute path to macros
+# ------------------------------------------------------
+#
+# See Also
+# --------
+# getAxialTarget.pwmacro for naming convention.
+# ======================================================
+
+
+DECLARE featureName $1
+DECLARE refOne "${featureName} Ref 1"
+DECLARE refTwo "${featureName} Ref 2"
+DECLARE refDistance "${featureName} Ref Dist"
+DECLARE macroPath $2
+
+
+MACRO EXEC ( "${macroPath}\deleteMeasurementIfFound.pwmacro", $featureName, $macroPath)
+MACRO EXEC ( "${macroPath}\deleteMeasurementIfFound.pwmacro", $refOne, $macroPath)
+MACRO EXEC ( "${macroPath}\deleteMeasurementIfFound.pwmacro", $refTwo, $macroPath)
+MACRO EXEC ( "${macroPath}\deleteMeasurementIfFound.pwmacro", $refDistance, $macroPath)
