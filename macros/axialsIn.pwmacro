@@ -53,23 +53,38 @@ WHILE $line <= $rowCount
     # First item in the array ($lineArray[1]) options:
     # {Balance Drum, Distance, Width, Stage X}
     
+    # The iterations below could be refactored to reduce the amount of code to maintain.
+    # The widths and distances should also check for cross-contamination so that a cleanup
+    # can be performed prior to probing a new feature.
+    
     IF $lineArray[1] == "Balance Drum"
         MACRO EXEC ( "${macroPath}\cleanupActiveDistance.pwmacro", "B.D." )
         MACRO EXEC ( "${macroPath}\axialTargetHandler.pwmacro", $lineArray[1], $flatnessTol, $parallelismTol, $macroPath )
         FEATURE DISTANCE CREATE ( "Active Face", "Balance Drum", "B.D.-B.D. Face" )
         
     ELSEIF $lineArray[1] == "Distance"
-        SET label $lineArray[2]
-        MACRO EXEC ( "${macroPath}\distanceHandler.pwmacro", $label, $flatnessTol, $parallelismTol, $macroPath )
-        FEATURE DISTANCE CREATE ( "Active Face", "Distance ${label}", "To Distance ${label}" )
+        SET lineArraySize SIZE ( lineArray )
+        SET lineArrayIndex 2
+        
+        WHILE $lineArrayIndex <= $lineArraySize
+            SET label $lineArray[$lineArrayIndex]
+            MACRO EXEC ( "${macroPath}\distanceHandler.pwmacro", $label, $flatnessTol, $parallelismTol, $macroPath )
+            FEATURE DISTANCE CREATE ( "Active Face", "Distance ${label}", "To Distance ${label}" )
+            ++lineArrayIndex
+        ENDWHILE
         
     ELSEIF $lineArray[1] == "Width"
-        SET label $lineArray[2]
-        MACRO EXEC ( "${macroPath}\widthHandler.pwmacro", $label, $flatnessTol, $parallelismTol, $macroPath )
-        FEATURE DISTANCE CREATE ( "Width ${label} 1", "Width ${label} 2", "Width ${label}" )
+        SET lineArraySize SIZE ( lineArray )
+        SET lineArrayIndex 2
+        
+        WHILE $lineArrayIndex <= $lineArraySize
+            SET label $lineArray[$lineArrayIndex]
+            MACRO EXEC ( "${macroPath}\widthHandler.pwmacro", $label, $flatnessTol, $parallelismTol, $macroPath )
+            FEATURE DISTANCE CREATE ( "Width ${label} 1", "Width ${label} 2", "Width ${label}" )
+            ++lineArrayIndex
+        ENDWHILE
         
     ELSE
-        # "Stage X" might represent a collection of features so an iteration of the row elements is required
         SET lineArraySize SIZE ( lineArray )
         SET lineArrayIndex 2
         SET stage $lineArray[1]
