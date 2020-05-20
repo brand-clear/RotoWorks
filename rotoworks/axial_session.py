@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
-from PyQt4 import QtGui
+from PyQt4 import QtGui, QtCore
 from pyqtauto.widgets import DialogButtonBox, Dialog
 from machine import Rotor
-from core import Path
+from core import Path, Image
 from data import Data
 from inspection import Axial
-from view import DuelingListBoxView, InspectionCommandView
+from view import DuelingListBoxView, InspectionCommandView, InputListView
 
 
 __author__ = 'Brandon McCleary'
@@ -107,10 +107,11 @@ class AxialSessionController(object):
 			item = options[i]
 
 			if item == 'Distance' or item == 'Width':
-				prompt = PromptDimLabel(item, self._session_labels)
+				prompt = PromptDimLabels(item, self._session_labels)
 				if prompt.exec_():
-					self._session_targets.append('%s %s' % (item, prompt.label))
-					self._session_labels.append(prompt.label.split('*')[0])	
+					for label in prompt.labels:
+						self._session_targets.append('%s %s' % (item, label))
+						self._session_labels.append(label.split('*')[0])
 			else:
 				self._session_targets.append(item)
 
@@ -163,9 +164,9 @@ class AxialSessionController(object):
 		self.view.accept()
 
 
-class PromptDimLabel(Dialog):
+class PromptDimLabels(Dialog):
 	"""
-	A prompt for user input regarding dimension labels.
+	A prompt for 'Distance' or 'Width' label inputs.
 
 	Parameters
 	----------
@@ -174,88 +175,78 @@ class PromptDimLabel(Dialog):
 
 	Attributes
 	----------
-	label : str or None
-		Accepted dimension label.
+	label : list
+		Accepted dimension labels.
 
 	"""
 	def __init__(self, context, unavailable=[]):
 		self._context = context
 		self._unavailable = unavailable
-		self.label = None
-		super(PromptDimLabel, self).__init__('Input needed')
+		self.labels = []
+		super(PromptDimLabels, self).__init__('Input needed')
 		self._build_gui()
 
 	def _build_gui(self):
 		"""Display widgets."""
-		self._dim_le = QtGui.QLineEdit()
-		self._dim_le.setMaxLength(3)
-		self._dim_le.setFixedWidth(50)
-		self._dim_le.textEdited.connect(self._on_edit_text)
-		self._feedback_lb = QtGui.QLabel()
-		self._h_layout = QtGui.QHBoxLayout()
-		self._h_layout.addWidget(QtGui.QLabel('%s label:' % self._context))
-		self._h_layout.addWidget(self._dim_le)
-		self._h_layout.addWidget(self._feedback_lb)
-		self.layout.addLayout(self._h_layout)
+		self._view = InputListView(
+			self.layout, '%s Label:' % self._context, Image.DOWNLOAD
+		)
+		self._view.input_le.returnPressed.connect(self._add_labels)
+		self._view.enter_btn.clicked.connect(self._add_labels)
 		self._btns = DialogButtonBox(self.layout, 'okcancel')
-		self._btns.accepted.connect(self._on_click_ok)
+		self._btns.accepted.connect(self.accept)
 		self._btns.rejected.connect(self.close)
-
-	def _on_edit_text(self):
-		"""Validate user input and display feedback."""
-		text = str(self._dim_le.text()).upper()
-
-		# No input
-		if len(text) == 0 :
-			self._feedback_lb.setText('')
-			return	
-
-		# Add constraint
-		if text[0] == ' ' or text[0] == '*':
-			self._set_bad()
-			return
-
-		# Get all possible inputs with no whitespace
-		text_split = filter(str.strip, text.split('*'))
-		if self._input_is_valid(text_split):
-			self._set_good()
-		else: 
-			self._set_bad()
+		self._view.connect(
+			QtGui.QShortcut(
+				QtGui.QKeySequence(QtCore.Qt.Key_Delete), 
+				self._view.listbox
+			), 
+			QtCore.SIGNAL('activated()'), 
+			self._on_click_delete
+		)
 
 	def _input_is_valid(self, text):
-		"""Returns True if user input is valid.
+		"""Returns True if text is a valid input.
 
 		Parameters
 		----------
 		text : str
 
 		"""
-		label = text[0]
-		if label not in self._unavailable and label.isalpha():
+		if len(text) == 0 or not text[0].isalpha():
+			return
+
+		# Strip whitespace and split by '*'
+		text_split = filter(str.strip, text.split('*'))
+		label = text_split[0]
+
+		# Evaluate label validity
+		if (label not in self._unavailable 
+				and label not in self.labels and label.isalpha()):
 			try:
-				modifier = text[1]
+				modifier = text_split[1]
 			except IndexError:
-				# No modifier
-				return True
+				return True	
 			else:
 				if modifier == 'H':
-					return True
-			
-	def _set_bad(self):
-		"""Display feedback for invalid inputs."""
-		self._feedback_lb.setStyleSheet('font-weight: bold; color: red')
-		self._feedback_lb.setText('BAD')
-	
-	def _set_good(self):
-		"""Display feedback for valid inputs."""
-		self._feedback_lb.setStyleSheet('font-weight: bold; color: green')
-		self._feedback_lb.setText('GOOD')	
+					return True	
 
-	def _on_click_ok(self):
-		"""Process a request to accept user input."""
-		if self._feedback_lb.text() == 'GOOD':
-			self.label = str(self._dim_le.text()).upper()
-			self.accept()
+	def _add_labels(self):
+		"""Update approved label model and view."""
+		text = str(self._view.input_le.text()).upper()
+		if self._input_is_valid(text):
+			self.labels.append(text)
+		self._view.set_listbox(self.labels)
+
+	def _on_click_delete(self):
+		"""Remove existing labels triggered by DELETE key."""
+		items = self._view.selected_items
+		for item in items:
+			try:
+				self.labels.remove(item)
+			except ValueError:
+				pass
+		self._view.set_listbox(self.labels)
 
 
 if __name__ == '__main__':
@@ -266,7 +257,10 @@ if __name__ == '__main__':
 
 
 	# Get test data
-	test_dir = 'C:\\Users\\mcclbra\\Desktop\\development\\rotoworks\\tests'
+	test_dir = os.path.join(
+		os.path.dirname(os.path.dirname(__file__)), 
+		'tests'
+	)
 	# test_file = '123123_Phase1_CentrifugalCompressor.rw'
 	test_file = '123123_Phase1_SteamTurbine.rw'
 	data = Data()
@@ -283,6 +277,8 @@ if __name__ == '__main__':
 	# -------------------------
 	controller = AxialSessionController(data)
 	controller.view.exec_()
+
+	
 
 
 

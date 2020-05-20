@@ -265,7 +265,7 @@ if __name__ == '__main__':
 
 	# Test HomeView
 	# -------------
-	widget = QtGui.QWidget()
-	view = HomeView(widget)
-	widget.show()
-	app.exec_()
+	# widget = QtGui.QWidget()
+	# view = HomeView(widget)
+	# widget.show()
+	# app.exec_()
