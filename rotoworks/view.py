@@ -40,7 +40,7 @@ class InputListView(QtGui.QHBoxLayout):
 		self.addWidget(QtGui.QLabel(self._label))
 		self.input_le = QtGui.QLineEdit()
 		self.addWidget(self.input_le)
-		self.enter_btn = ImageButton(self._btn_img, self)
+		self.enter_btn = ImageButton(self._btn_img, self, flat=True)
 		self._parent.addLayout(self)
 		self.listbox = ListBox()
 		self._parent.addWidget(self.listbox)
@@ -143,6 +143,7 @@ class DuelingListBoxView(QtGui.QHBoxLayout):
 	----------
 	source : ListBoxHeaderView
 	add_btn : ImageButton
+	import_btn : ImageButton
 	subtract_btn : ImageButton
 	destination : ListBoxHeaderView
 
@@ -159,6 +160,9 @@ class DuelingListBoxView(QtGui.QHBoxLayout):
 		self._btn_layout = QtGui.QVBoxLayout()
 		self._btn_layout.addItem(Spacer())
 		self.add_btn = ImageButton(Image.FORWARD, self._btn_layout)
+		self.import_btn = ImageButton(
+			Image.CLOUD_RIGHT, self._btn_layout, tooltip='Import'
+		)
 		self.subtract_btn = ImageButton(Image.BACK, self._btn_layout)
 		self._btn_layout.addItem(Spacer())
 		self.addLayout(self._btn_layout)

@@ -57,6 +57,9 @@ class Image(object):
     LOGO = osjoin(ROOT, 'logo.png')
     SEARCH = osjoin(ROOT, 'search.png')
     ICON = osjoin(ROOT, 'sulzer.png')
+    CLOUD = osjoin(ROOT, 'cloud.png')
+    CLOUD_RIGHT = osjoin(ROOT, 'cloud-right.png')
+    COMPARE = osjoin(ROOT, 'compare.png')
     
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
+from collections import OrderedDict
 from PyQt4 import QtGui
 from pyqtauto.widgets import (
 	Spacer, 
@@ -26,6 +27,7 @@ from turbodoc import (
 )
 from diameter_session import DiameterSessionController
 from axial_session import AxialSessionController
+from template import ComparisonController
 
 
 __author__ = 'Brandon McCleary'
@@ -56,7 +58,13 @@ class WorkspaceView(Dialog):
 		self._h_layout.addItem(Spacer())
 		self.edit_btn = ImageButton(Image.EDIT, self._h_layout, flat=True)
 		self.layout.addLayout(self._h_layout)
-		self.table = Table(['Inspection', 'Measure', 'Document'])
+		self._btn_map = OrderedDict([
+			(0, 'Inspection'),
+			(1, 'Measure'),
+			(2, 'Document'),
+			(3, 'Compare')
+		])
+		self.table = Table(self._btn_map.values())
 		self.table.verticalHeader().hide()
 		self.layout.addWidget(self.table)
 		self.ok_btn = DialogButtonBox(self.layout)
@@ -86,16 +94,20 @@ class WorkspaceView(Dialog):
 			# performed at least once before.
 			self._add_table_button(
 				inspections[i]+'Scope.csv' in existing_files, 
-				callback, 
-				i, 1
+				callback, i, 1
 			)
 			# Document button
 			# If <inspection>Doc.txt exists, the inspection has been 
 			# documented at least once before.
 			self._add_table_button(
 				inspections[i]+'Doc.txt' in existing_files, 
-				callback, 
-				i, 2
+				callback, i, 2
+			)
+			# Compare button
+			# If <inspection>s.csv does not exist the button will disable.
+			self._add_table_button(
+				inspections[i]+'s.csv' in existing_files,
+				callback, i, 3
 			)
 
 	def _add_table_button(self, has_worked, callback, row, col):
@@ -112,9 +124,15 @@ class WorkspaceView(Dialog):
 
 		"""
 		map = {True: Image.REPLAY, False: Image.PLAY}
-		self.table.setCellWidget(
-			row, col, TableImageButton(map[has_worked], callback).widget
-		)
+		if col < 3:
+			self.table.setCellWidget(
+				row, col, TableImageButton(map[has_worked], callback).widget
+			)
+		else:
+			btn = TableImageButton(Image.COMPARE, callback)
+			if not has_worked:
+				btn.setEnabled(False)
+			self.table.setCellWidget(row, col, btn.widget)
 
 	def get_clicked_intent(self):
 		"""Get the requested inspection and action from a button click.
@@ -124,14 +142,13 @@ class WorkspaceView(Dialog):
 		inspection : str
 			{'Axial', 'Diameter'}
 		action : str
-			{'measure', 'document'}
+			{'Measure', 'Document', 'Compare'}
 
 		"""
 		button = self.sender()
 		index = self.table.indexAt(button.parent().pos())
 		inspection = str(self.table.item(index.row(), 0).text())
-		action = 'measure' if index.column() == 1 else 'document'
-		return inspection, action
+		return inspection, self._btn_map[index.column()]
 
 
 class WorkspaceController(object):
@@ -194,11 +211,14 @@ class WorkspaceController(object):
 			self._on_click_table_button, 
 			self._project_path
 		)
-		if intent == 'document':
+		if intent == 'Document':
 			self._launch_doc_session(inspection)
 
-		elif intent == 'measure':
+		elif intent == 'Measure':
 			self._launch_measurement_session(inspection)
+		else:
+			comparison = ComparisonController(self._definition, inspection)
+			comparison.start()
 
 	def _launch_measurement_session(self, inspection):
 		"""Start a measurement session.
@@ -253,9 +273,9 @@ if __name__ == '__main__':
 	app.setStyle(QtGui.QStyleFactory.create('cleanlooks'))
 
 	# Get test data
-	test_dir = 'C:\\Users\\mcclbra\\Desktop\\development\\rotoworks\\tests'
-	test_file = '123123_Phase1_CentrifugalCompressor.rw'
-	#test_file = '123123_Phase1_SteamTurbine.rw'
+	test_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'tests')
+	#test_file = '123123_Phase1_CentrifugalCompressor.rw'
+	test_file = '123123_Phase1_SteamTurbine.rw'
 	data = Data()
 	data.open_project(os.path.join(test_dir, test_file))
 

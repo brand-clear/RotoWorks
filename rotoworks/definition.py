@@ -40,7 +40,6 @@ class DefinitionView(Dialog):
 	machine_sub_type : str
 	nickname : str
 	is_curtis : bool
-	is_stacked : bool
 
 	"""
 	def __init__(self, phases, machine_types, machine_sub_types):
@@ -82,18 +81,13 @@ class DefinitionView(Dialog):
 		# Optional widgets are only valid for Steam Turbine machines.
 		self._curtis_chk = QtGui.QCheckBox()
 		self._curtis_lb = QtGui.QLabel('Curtis Stage:')
-		self._stacked_chk = QtGui.QCheckBox()
-		self._stacked_lb = QtGui.QLabel('Stacked:')
 		self._form.insertRow(3, self._curtis_lb, self._curtis_chk)
-		self._form.insertRow(4, self._stacked_lb, self._stacked_chk)
 
 	def remove_optional_gui(self):
 		# Optional widgets are only valid for Steam Turbine machines.
 		try:
 			self._curtis_chk.deleteLater()
 			self._curtis_lb.deleteLater()
-			self._stacked_chk.deleteLater()
-			self._stacked_lb.deleteLater()
 		except (RuntimeError, AttributeError):
 			pass
 
@@ -133,20 +127,6 @@ class DefinitionView(Dialog):
 		"""
 		try:
 			return self._curtis_chk.isChecked()
-		except AttributeError:
-			return False
-
-	@property
-	def is_stacked(self):
-		"""bool: True if this machine is stacked.
-		
-		Notes
-		-----
-		This property only plays a factor for Steam Turbine machines.
-
-		"""
-		try:
-			return self._stacked_chk.isChecked()
 		except AttributeError:
 			return False
 
@@ -287,7 +267,6 @@ class DefinitionController(object):
 			('Phase', self.view.phase),
 			('Machine Type', self.view.machine_type),
 			('Curtis Stage', self.view.is_curtis),
-			('Stacked', self.view.is_stacked),
 			('Path to Filename', folder),
 			('Filename', filename),
 			('Ref Filename', None)

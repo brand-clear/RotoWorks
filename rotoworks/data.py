@@ -31,7 +31,7 @@ class Data(object):
         
         Keys : {
             'Job Number', 'Phase', 'Machine Type', 'Curtis Stage', 
-            'Stacked', 'Path to Filename', 'Filename', 'Ref Filename'
+            'Path to Filename', 'Filename', 'Ref Filename'
         }
         
         """
