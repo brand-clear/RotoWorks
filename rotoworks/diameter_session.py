@@ -5,11 +5,12 @@ import sys
 import string
 import itertools
 from PyQt4 import QtGui, QtCore
-from pyqtauto.widgets import Dialog
+from pyqtauto.widgets import Dialog, ImageButton
 from view import InputListView, InspectionCommandView
 from core import Image, Path
 from machine import Rotor
 from data import Data
+from template import Template
 from inspection import Diameter
 
 
@@ -36,13 +37,14 @@ class DiameterSessionView(Dialog):
 		self.input = InputListView(
 			self.layout, 
 			'Dimension:', 
-			Image.DOWNLOAD
+			Image.CLOUD
 		)
 		self.input.input_le.setValidator(
 			QtGui.QRegExpValidator(QtCore.QRegExp("[a-z-A-Z-*]+"), self)
 		)
 		self.input.input_le.setMaxLength(7)
 		self.input.enter_btn.setAutoDefault(False)
+		self.input.enter_btn.setToolTip('Import')
 		self.cmd = InspectionCommandView(self.layout)
 
 	@property
@@ -92,7 +94,7 @@ class DiameterSessionController(object):
 		# Initialize view and connect widgets with responsive actions
 		self.view = DiameterSessionView()
 		self.view.input.input_le.returnPressed.connect(self._on_click_enter)
-		self.view.input.enter_btn.clicked.connect(self._on_click_enter)
+		self.view.input.enter_btn.clicked.connect(self._on_click_import)
 		self.view.cmd.start_btn.clicked.connect(self._on_click_start)
 		self.view.cmd.finish_btn.clicked.connect(self._on_click_finish)
 		self.view.connect(
@@ -233,14 +235,23 @@ class DiameterSessionController(object):
 		)
 		self.view.accept()
 
+	def _on_click_import(self):
+		"""Send an existing workscope template to PolyWorks for inspection."""
+		if Template.copied(self._definition['Path to Filename'], 'Diameter'):
+			self._diameter.macro_exec(
+				self._diameter.MACRO_IN,
+				self._diameter.SCOPE_FILE,
+				Path.MACROS
+			)
 
 if __name__ == '__main__':
 	# For test
 	app = QtGui.QApplication(sys.argv)
+	app.setStyle(QtGui.QStyleFactory.create('cleanlooks'))
 
 
 	# Get test data
-	test_dir = 'C:\\Users\\mcclbra\\Desktop\\development\\rotoworks\\tests'
+	test_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'tests')
 	test_file = '123123_Phase1_CentrifugalCompressor.rw'
 	data = Data()
 	data.open_project(os.path.join(test_dir, test_file))

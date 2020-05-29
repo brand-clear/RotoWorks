@@ -8,6 +8,7 @@ from machine import Rotor
 from core import Path, Image
 from data import Data
 from inspection import Axial
+from template import Template
 from view import DuelingListBoxView, InspectionCommandView, InputListView
 
 
@@ -90,6 +91,7 @@ class AxialSessionController(object):
 		self.view = AxialSessionView()
 		self.view.input.source.set_listbox(self._session_options)
 		self.view.input.add_btn.clicked.connect(self._on_click_add)
+		self.view.input.import_btn.clicked.connect(self._on_click_import)
 		self.view.input.subtract_btn.clicked.connect(self._on_click_subtract)
 		self.view.cmd.start_btn.clicked.connect(self._on_click_start)
 		self.view.cmd.finish_btn.clicked.connect(self._on_click_finish)
@@ -162,6 +164,15 @@ class AxialSessionController(object):
 			Path.MACROS
 		)
 		self.view.accept()
+
+	def _on_click_import(self):
+		"""Send an existing workscope template to PolyWorks for inspection."""
+		if Template.copied(self._definition['Path to Filename'], 'Axial'):
+			self._axial.macro_exec(
+				self._axial.MACRO_IN,
+				self._axial.SCOPE_FILE,
+				Path.MACROS
+			)
 
 
 class PromptDimLabels(Dialog):
