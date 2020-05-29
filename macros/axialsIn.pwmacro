@@ -37,15 +37,13 @@ DECLARE errorStatus
 
 CONFIG UNITS LENGTH ( "Inches" )
 
-# Verify that datum exists
-MACRO EXEC ( "${macroPath}\activeFaceHandler.pwmacro", $macroPath )
-
-
 DATA_FILE PROPERTIES NB_LINES GET ( $filePath, rowCount )
-
 
 # Iterate over each line in the data file
 WHILE $line <= $rowCount
+    
+    # Verify that datum exists
+    MACRO EXEC ( "${macroPath}\activeFaceHandler.pwmacro", $macroPath )
     
     # Get the line of the file as an array of strings
     DATA_FILE READ LINE_FIELDS ( $filePath, $line, lineArray, ",", "Off")
@@ -97,7 +95,6 @@ WHILE $line <= $rowCount
             ++ lineArrayIndex
         ENDWHILE
         
-        
         # Build distance features for all stage-related axial targets
         
         # Centrifugal compressor features
@@ -118,7 +115,6 @@ WHILE $line <= $rowCount
         FEATURE DISTANCE CREATE ( "Active Face", "${stage} Shroud Band", "${stage}-Shroud Band")
         FEATURE DISTANCE CREATE ( "Active Face", "${stage} Blade Root", "${stage}-Blade Root" )
         FEATURE DISTANCE CREATE ( "Active Face", "${stage} Blade Edge", "${stage}-Blade Edge" )
-        
         
     ENDIF
     
