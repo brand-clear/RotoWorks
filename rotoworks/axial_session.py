@@ -75,10 +75,16 @@ class AxialSessionController(object):
 		)
 
 		# self._session_options is the model for self.view.input.source.
-		self._session_options = Rotor.stage_names(
-			len(self._scope),
-			self._definition['Curtis Stage'] == 1
-		)
+		try:
+			self._session_options = Rotor.stage_names(
+				len(self._scope),
+				self._definition['Curtis Stage'] == 1
+			)
+		except TypeError:
+			# object of type 'NoneType' has no len()
+			# This is caused when self._scope is None
+			self._session_options = []
+
 		self._session_options.extend(['Balance Drum', 'Distance', 'Width'])
 
 		# self._session_targets is the model for self.view.input.destination.
