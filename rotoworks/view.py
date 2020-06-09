@@ -1,12 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import sys
 from PyQt4 import QtGui, QtCore
 from pyqtauto.widgets import ImageButton, Dialog, Spacer, GenericButton, ListBox
 from core import Image
-
-
-__author__ = 'Brandon McCleary'
 
 
 class InputListView(QtGui.QHBoxLayout):

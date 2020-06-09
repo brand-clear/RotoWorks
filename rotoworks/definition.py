@@ -1,7 +1,5 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-import os
 import sys
+import os.path
 from collections import OrderedDict
 from PyQt4 import QtGui, QtCore
 from pyqtauto.widgets import (
@@ -42,28 +40,26 @@ class DefinitionView(Dialog):
 	is_curtis : bool
 
 	"""
-	def __init__(self, phases, machine_types, machine_sub_types):
+	def __init__(self, phases, machine_types, machine_sub_types, 
+			machine_callback, accepted_callback):
+		self._phases = phases
+		self._machine_types = machine_types
+		self._machine_sub_types = machine_sub_types
+		self._machine_callback = machine_callback
+		self._accepted_callback = accepted_callback
 		super(DefinitionView, self).__init__('Project Definition')
-		self._build_gui(phases, machine_types, machine_sub_types)
+		self._build_gui()
 
-	def _build_gui(self, phases, machine_types, machine_sub_types):
-		"""Fill and display widgets.
-
-		Parameters
-		----------
-		phases : list
-		machine_types : list
-		sub_types : list
-
-		"""
+	def _build_gui(self):
+		"""Fill and display widgets."""
 		# Init widgets
 		self._form = QtGui.QFormLayout()
 		self._job_le = QtGui.QLineEdit()
 		self._job_le.setValidator(QtGui.QIntValidator())
 		self._job_le.setMaxLength(6)
-		self._phase_cb = ComboBox(phases)
-		self.machine_cb = ComboBox(machine_types)
-		self._sub_cb = ComboBox(machine_sub_types)
+		self._phase_cb = ComboBox(self._phases)
+		self.machine_cb = ComboBox(self._machine_types)
+		self._sub_cb = ComboBox(self._machine_sub_types)
 		self._name_le = QtGui.QLineEdit()
 		self._name_le.setValidator(
 			QtGui.QRegExpValidator(QtCore.QRegExp("[a-z-A-Z_0-9]+"), self)
@@ -76,6 +72,9 @@ class DefinitionView(Dialog):
 		self._form.addRow(QtGui.QLabel('Nickname:'), self._name_le)
 		self.layout.addLayout(self._form)
 		self.ok = DialogButtonBox(self.layout)
+		# Connect to callbacks
+		self.machine_cb.activated.connect(self._machine_callback)
+		self.ok.accepted.connect(self._accepted_callback)
 
 	def display_optional_gui(self):
 		# Optional widgets are only valid for Steam Turbine machines.
@@ -150,10 +149,10 @@ class DefinitionController(object):
 		self.view = DefinitionView(
 			Inspection.PHASES, 
 			Rotor.get_machine_types(), 
-			Rotor.get_machine_sub_types()
+			Rotor.get_machine_sub_types(),
+			self._on_select_machine,
+			self._on_click_ok
 		)
-		self.view.machine_cb.activated.connect(self._on_select_machine)
-		self.view.ok.accepted.connect(self._on_click_ok)
 
 	def _on_select_machine(self):
 		"""Handle optional GUI."""
@@ -197,7 +196,18 @@ class DefinitionController(object):
 				os.path.join(Path.JOBS, os.path.basename(pfolder_root))
 			)
 			rw_job_folder = create_folder(os.path.join(rw_job_root, job_num))
-			rw_project_folder = create_folder(os.path.join(rw_job_folder, phase))
+			rw_project_folder = create_folder(
+				os.path.join(rw_job_folder, phase)
+			)
+			if len(self.view.machine_sub_type) > 1:
+				# An empty string of len(1) is used as a placeholder
+				rw_project_folder = create_folder(
+					os.path.join(rw_project_folder, self.view.machine_sub_type)
+				)
+			if len(self.view.nickname) > 0:
+				rw_project_folder = create_folder(
+					os.path.join(rw_project_folder, self.view.nickname)
+				)
 		except WindowsError as error:
 			raise error
 

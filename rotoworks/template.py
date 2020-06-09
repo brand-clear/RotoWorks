@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import os.path
 import sys
 import pandas as pd
@@ -7,9 +5,6 @@ from shutil import copy
 from PyQt4 import QtGui
 from data import Data
 from history import HistoryController
-
-
-__author__ = 'Brandon McCleary'
 
 
 class ComparisonController(object):
@@ -21,7 +16,6 @@ class ComparisonController(object):
 	def start(self):
 		try:
 			filename = '%ss.csv' % self._inspection
-
 			filepath = os.path.join(
 				self._definition['Path to Filename'], filename
 			)
@@ -41,14 +35,6 @@ class ComparisonController(object):
 				comparison_data.to_csv('%s.csv' % save_path, index=False)
 		except TypeError as error:
 			pass # object of type 'NoneType' has no len(), user cancelled
-
-
-
-
-
-
-
-
 
 
 class Template:
@@ -152,37 +138,5 @@ class Template:
 		return job1_df
 
 
-		
-
-
 if __name__ == '__main__':
-	app = QtGui.QApplication(sys.argv)
-	app.setStyle(QtGui.QStyleFactory.create('cleanlooks'))
-	# Template.copied(
-	# 	os.path.join(os.path.dirname(os.path.dirname(__file__)), 
-	# 				'data', 'jobs', '123000-123499', '132127', 'Phase 1'),
-	# 	'Diameter'
-	# )
-
-
-
-	name = QtGui.QFileDialog.getSaveFileName(caption='Save File')
-	print name
-
-
-# df = pd.read_csv('L:\\Division2\\DRAFTING\\Applications\\rotoworks\\data\\jobs\\132500-132999\\132652\\Phase 1\\Axials.csv')
-# df.loc[df['Control'] == 'Custom', 'Control'] = '3D Distance'
-# df = df[df['Control'] == '3D Distance']
-# df = df[~df['Name'].str.contains('Ref')]
-# df.drop(['Control', 'Tol', 'Dev', 'Test', 'Out Tol'], axis=1, inplace=True)
-
-
-# df2 = pd.read_csv('L:\\Division2\\DRAFTING\\Applications\\rotoworks\\data\\jobs\\132500-132999\\132832\\Phase 1\\Axials.csv')
-# df2.loc[df2['Control'] == 'Custom', 'Control'] = '3D Distance'
-# df2 = df2[df2['Control'] == '3D Distance']
-# df2 = df2[~df2['Name'].str.contains('Ref')]
-# df2.drop(['Control', 'Tol', 'Dev', 'Test', 'Out Tol'], axis=1, inplace=True)
-
-# df['Ref Job'] = df2['Meas']
-# df['Comparison'] = abs(df['Meas'] - df['Ref Job'])
-# print df
+	pass

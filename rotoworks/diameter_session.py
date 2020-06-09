@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import os
 import sys
 import string
@@ -14,44 +12,68 @@ from template import Template
 from inspection import Diameter
 
 
-__author__ = 'Brandon McCleary'
-
-
 class DiameterSessionView(Dialog):
 	"""
 	Displays the diameter inspection window.
 
 	Attributes
 	----------
-	input : InputListView
-	cmd : InspectionCommandView
 	label_range : list
 
 	"""
-	def __init__(self):
+	def __init__(self, return_callback, import_callback, start_callback, 
+			finish_callback, delete_callback):
+		self._return_callback = return_callback
+		self._import_callback = import_callback
+		self._start_callback = start_callback
+		self._finish_callback = finish_callback
+		self._delete_callback = delete_callback
 		super(DiameterSessionView, self).__init__('Diameter Session')
 		self._build_gui()
 
 	def _build_gui(self):
 		"""Display widgets."""
-		self.input = InputListView(
-			self.layout, 
-			'Dimension:', 
-			Image.CLOUD
-		)
-		self.input.input_le.setValidator(
+		self._input = InputListView(self.layout, 'Dimension:', Image.CLOUD)
+		self._input.input_le.setValidator(
 			QtGui.QRegExpValidator(QtCore.QRegExp("[a-z-A-Z-*]+"), self)
 		)
-		self.input.input_le.setMaxLength(7)
-		self.input.enter_btn.setAutoDefault(False)
-		self.input.enter_btn.setToolTip('Import')
-		self.cmd = InspectionCommandView(self.layout)
+		self._input.input_le.setMaxLength(7)
+		self._input.enter_btn.setAutoDefault(False)
+		self._input.enter_btn.setToolTip('Import')
+		self._cmd = InspectionCommandView(self.layout)
+		self._input.input_le.returnPressed.connect(self._return_callback)
+		self._input.enter_btn.clicked.connect(self._import_callback)
+		self._cmd.start_btn.clicked.connect(self._start_callback)
+		self._cmd.finish_btn.clicked.connect(self._finish_callback)
+		self.connect(
+			QtGui.QShortcut(
+				QtGui.QKeySequence(QtCore.Qt.Key_Delete), 
+				self._input.listbox
+			), 
+			QtCore.SIGNAL('activated()'), 
+			self._delete_callback
+		)
 
 	@property
 	def label_range(self):
 		"""list: QLineEdit input texts in all caps."""
-		text = str(self.input.input_le.text()).upper()
+		text = str(self._input.input_le.text()).upper()
 		return filter(str.strip, text.split('-'))
+
+	@property
+	def selected_items(self):
+		"""list: Selected ``QListWidget`` items."""
+		return self._input.selected_items
+
+	def update_labels(self, labels):
+		"""Refresh ``QListWidget`` items.
+
+		Parameters
+		----------
+		labels : list
+
+		"""
+		self._input.set_listbox(labels)
 
 
 class DiameterSessionController(object):
@@ -68,12 +90,7 @@ class DiameterSessionController(object):
 	MODIFIERS : list
 	view : DiameterSessionView
 
-	See Also
-	--------
-	data.Data.definition
-
 	"""
-
 	# *H is a signal for hand measurements
 	# *P is a signal for constraining planes
 	MODIFIERS = ['*H', '*P']
@@ -84,31 +101,22 @@ class DiameterSessionController(object):
 			self._definition['Machine Type']
 		)
 		self._diameter = Diameter(self._definition['Path to Filename'])
-
-		# Index _alphabet, the dimension label library, for label ranges
+		self._diameter.polyworks.connect_to_inspector()
 		self._alphabet = list(string.ascii_uppercase)
 		self._alphabet.extend(
 			[i+b for i in self._alphabet for b in self._alphabet]
 		)
-
-		# Initialize view and connect widgets with responsive actions
-		self.view = DiameterSessionView()
-		self.view.input.input_le.returnPressed.connect(self._on_click_enter)
-		self.view.input.enter_btn.clicked.connect(self._on_click_import)
-		self.view.cmd.start_btn.clicked.connect(self._on_click_start)
-		self.view.cmd.finish_btn.clicked.connect(self._on_click_finish)
-		self.view.connect(
-			QtGui.QShortcut(
-				QtGui.QKeySequence(QtCore.Qt.Key_Delete), 
-				self.view.input.listbox
-			), 
-			QtCore.SIGNAL('activated()'), 
+		self.view = DiameterSessionView(
+			self._on_click_enter,
+			self._on_click_import,
+			self._on_click_start,
+			self._on_click_finish,
 			self._on_click_delete
 		)
 
 	def _update_view(self):
 		"""Refresh widgets."""
-		self.view.input.set_listbox(self._diameter.current_session)
+		self.view.update_labels(self._diameter.current_session)
 
 	def _on_click_enter(self):
 		"""Process input and update view."""
@@ -121,7 +129,7 @@ class DiameterSessionController(object):
 
 	def _on_click_delete(self):
 		"""Remove the selected items from the measurement session."""
-		items = self.view.input.selected_items
+		items = self.view.selected_items
 		session = self._diameter.current_session
 		session = [i for i in session if i not in items]
 		del self._diameter.current_session

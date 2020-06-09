@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import os
 import sys
 from PyQt4 import QtGui, QtCore
@@ -12,20 +10,28 @@ from template import Template
 from view import DuelingListBoxView, InspectionCommandView, InputListView
 
 
-__author__ = 'Brandon McCleary'
-
-
 class AxialSessionView(Dialog):
 	"""
 	Displays the axial inspection window.
 
-	Attributes
+	Parameters
 	----------
-	input : DuelingListBoxView
-	cmd : InspectionCommandView
-
+	options : list
+	add_callback : callable
+	import_callback : callable
+	subtract_callback : callable
+	start_callback : callable
+	finish_callback : callable
+	
 	"""
-	def __init__(self):
+	def __init__(self, options, add_callback, import_callback, 
+			subtract_callback, start_callback, finish_callback):
+		self._options = options
+		self._add_callback = add_callback
+		self._import_callback = import_callback
+		self._subtract_callback = subtract_callback
+		self._start_callback = start_callback
+		self._finish_callback = finish_callback
 		super(AxialSessionView, self).__init__('Axial Session')
 		self._build_gui()
 
@@ -34,18 +40,34 @@ class AxialSessionView(Dialog):
 		self.setFixedWidth(450)
 		self.setMinimumHeight(300)
 		self.layout.setSpacing(20)
-		self.input = DuelingListBoxView(self.layout, ['Options', 'Session'])
-		self.cmd = InspectionCommandView(self.layout)
+		self._input = DuelingListBoxView(self.layout, ['Options', 'Session'])
+		self._input.source.set_listbox(self._options)
+		self._input.add_btn.clicked.connect(self._add_callback)
+		self._input.import_btn.clicked.connect(self._import_callback)
+		self._input.subtract_btn.clicked.connect(self._subtract_callback)
+		self._cmd = InspectionCommandView(self.layout)
+		self._cmd.start_btn.clicked.connect(self._start_callback)
+		self._cmd.finish_btn.clicked.connect(self._finish_callback)
 
 	@property
 	def selected_options(self):
 		"""list: Selected items in the 'Options' ``ListBox``."""
-		return self.input.source.selected_items
+		return self._input.source.selected_items
 
 	@property
 	def selected_session(self):
 		"""list: Selected items in the 'Session' ``ListBox``."""
-		return self.input.destination.selected_items
+		return self._input.destination.selected_items
+
+	def update_destination(self, targets):
+		"""Display the items sent to the destination ``ListBoxHeaderView``.
+		
+		Parameters
+		----------
+		targets : list
+
+		"""
+		self._input.destination.set_listbox(targets)
 
 
 class AxialSessionController(object):
@@ -61,20 +83,15 @@ class AxialSessionController(object):
 	----------
 	view : AxialSessionView
 
-	See Also
-	--------
-	data.Data
-
 	"""
 	def __init__(self, data):
 		self._definition = data.definition
 		self._scope = data.scope
 		self._axial = Axial(self._definition['Path to Filename'])
+		self._axial.polyworks.connect_to_inspector()
 		self._machine = Rotor.get_machine_type_as_object(
 			self._definition['Machine Type']
 		)
-
-		# self._session_options is the model for self.view.input.source.
 		try:
 			self._session_options = Rotor.stage_names(
 				len(self._scope),
@@ -82,38 +99,33 @@ class AxialSessionController(object):
 			)
 		except TypeError:
 			# object of type 'NoneType' has no len()
-			# This is caused when self._scope is None
+			# This is due to certain machines (e.g. gears) not having stages
 			self._session_options = []
 
 		self._session_options.extend(['Balance Drum', 'Distance', 'Width'])
-
-		# self._session_targets is the model for self.view.input.destination.
 		self._session_targets = []
-
-		# self._session_labels contains all unique distance/width labels in the
-		# current session (self._session_targets)
+		# self._session_labels contains all unique distance/width labels in
+		# self._session_targets
 		self._session_labels = []
-
-		self.view = AxialSessionView()
-		self.view.input.source.set_listbox(self._session_options)
-		self.view.input.add_btn.clicked.connect(self._on_click_add)
-		self.view.input.import_btn.clicked.connect(self._on_click_import)
-		self.view.input.subtract_btn.clicked.connect(self._on_click_subtract)
-		self.view.cmd.start_btn.clicked.connect(self._on_click_start)
-		self.view.cmd.finish_btn.clicked.connect(self._on_click_finish)
+		self.view = AxialSessionView(
+			self._session_options,
+			self._on_click_add,
+			self._on_click_import,
+			self._on_click_subtract,
+			self._on_click_start,
+			self._on_click_finish
+		)
 	
 	def _update_view(self):
 		"""Refresh widgets."""
-		self.view.input.destination.set_listbox(self._session_targets)
+		self.view.update_destination(self._session_targets)
 
 	def _on_click_add(self):
 		"""Process a request to add selected options to the session."""
 		options = self.view.selected_options
 		# Weed out options already in session
 		options = [i for i in options if i not in self._session_targets]
-		for i in range(len(options)):
-			item = options[i]
-
+		for item in options:
 			if item == 'Distance' or item == 'Width':
 				prompt = PromptDimLabels(item, self._session_labels)
 				if prompt.exec_():

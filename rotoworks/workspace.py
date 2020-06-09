@@ -1,62 +1,53 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import os
 import sys
 from collections import OrderedDict
 from PyQt4 import QtGui
 from pyqtauto.widgets import (
-	Spacer, 
-	Table, 
-	ImageButton, 
-	DialogButtonBox, 
-	Dialog, 
-	TableItem,
-	TableImageButton,
-	ExceptionMessageBox
+	Spacer, Table, ImageButton, DialogButtonBox, Dialog, 
+	TableItem, TableImageButton, ExceptionMessageBox
 )
 from machine import Rotor
 from core import Path, Image
 from data import Data
 from inspection import Inspection
 from turbodoc import (
-	AxialDoc, 
-	DiameterDoc, 
-	CADOpenError, 
-	CADLayerError, 
-	CADDocError
+	AxialDoc, DiameterDoc, CADOpenError, CADLayerError, CADDocError
 )
 from diameter_session import DiameterSessionController
 from axial_session import AxialSessionController
 from template import ComparisonController
 
 
-__author__ = 'Brandon McCleary'
-
-
 class WorkspaceView(Dialog):
 	"""
 	Displays the project workspace window.
 
+	Parameters
+	----------
+	filename_text : str
+	edit_callback : callable
+
 	Attributes
 	----------
-	filename_lb : QLabel
-	edit_btn : ImageButton
 	table : Table
-	ok_btn : DialogButtonBox
 
 	"""
-	def __init__(self):
+	def __init__(self, filename_text, edit_callback):
+		self._filename_text = filename_text
+		self._edit_callback = edit_callback
 		super(WorkspaceView, self).__init__('Project Workspace')
 		self._build_gui()
 
 	def _build_gui(self):
 		"""Display widgets."""
 		self._h_layout = QtGui.QHBoxLayout()
-		self.filename_lb = QtGui.QLabel()
+		self.filename_lb = QtGui.QLabel(self._filename_text)
 		self._h_layout.addWidget(QtGui.QLabel('Definition:'))
 		self._h_layout.addWidget(self.filename_lb)
 		self._h_layout.addItem(Spacer())
-		self.edit_btn = ImageButton(Image.EDIT, self._h_layout, flat=True)
+		self.edit_btn = ImageButton(
+			Image.EDIT, self._h_layout, self._edit_callback, flat=True
+		)
 		self.layout.addLayout(self._h_layout)
 		self._btn_map = OrderedDict([
 			(0, 'Inspection'),
@@ -68,6 +59,7 @@ class WorkspaceView(Dialog):
 		self.table.verticalHeader().hide()
 		self.layout.addWidget(self.table)
 		self.ok_btn = DialogButtonBox(self.layout)
+		self.ok_btn.accepted.connect(self.accept)
 
 	def set_table(self, callback, filepath):
 		"""Update table contents.
@@ -177,12 +169,10 @@ class WorkspaceController(object):
 		self._machine = Rotor.get_machine_type_as_object(
 			self._definition['Machine Type']
 		)
-		self.view = WorkspaceView()
-		self.view.filename_lb.setText(self._definition['Filename'])
-		self.view.edit_btn.clicked.connect(
+		self.view = WorkspaceView(
+			self._definition['Filename'], 
 			lambda: self._scope_callback(self, self._data)
 		)
-		self.view.ok_btn.accepted.connect(self.view.accept)
 		self.update_view()
 
 	@property
@@ -207,13 +197,8 @@ class WorkspaceController(object):
 	def _on_click_table_button(self):
 		"""Process table button clicks to launch the appropriate action."""
 		inspection, intent = self.view.get_clicked_intent()
-		self.view.set_table(
-			self._on_click_table_button, 
-			self._project_path
-		)
 		if intent == 'Document':
 			self._launch_doc_session(inspection)
-
 		elif intent == 'Measure':
 			self._launch_measurement_session(inspection)
 		else:

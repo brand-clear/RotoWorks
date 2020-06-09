@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import os
 import sys
 from PyQt4 import QtGui
@@ -9,12 +7,13 @@ from view import InputListView
 from core import Image, Path
 
 
-__author__ = 'Brandon McCleary'
-
-
 class HistoryView(Dialog):
 	"""
 	Displays an interface for querying historical project data.
+
+	Parameters
+	----------
+	search_callback : callable
 	
 	Attributes
 	----------
@@ -23,7 +22,8 @@ class HistoryView(Dialog):
 	btns : DialogButtonBox
 
 	"""
-	def __init__(self):
+	def __init__(self, search_callback):
+		self._search_callback = search_callback
 		super(HistoryView, self).__init__('Open Project')
 		self._build_gui()
 
@@ -33,7 +33,12 @@ class HistoryView(Dialog):
 		self.input_view.listbox.setSelectionMode(
 			QtGui.QAbstractItemView.SingleSelection
 		)
+		self.input_view.input_le.returnPressed.connect(self._search_callback)
+		self.input_view.enter_btn.clicked.connect(self._search_callback)
+		self.input_view.listbox.itemDoubleClicked.connect(self.accept)
 		self.btns = DialogButtonBox(self.layout, 'okcancel')
+		self.btns.accepted.connect(self.accept)
+		self.btns.rejected.connect(self.close)
 
 	@property
 	def job_num(self):
@@ -54,12 +59,7 @@ class HistoryController(object):
 	"""
 	def __init__(self):
 		self._projects = {}
-		self.view = HistoryView()
-		self.view.input_view.input_le.returnPressed.connect(self._on_click_search)
-		self.view.input_view.enter_btn.clicked.connect(self._on_click_search)
-		self.view.input_view.listbox.itemDoubleClicked.connect(self.view.accept)
-		self.view.btns.accepted.connect(self.view.accept)
-		self.view.btns.rejected.connect(self.view.close)
+		self.view = HistoryView(self._on_click_search)
 
 	@property
 	def project(self):
@@ -87,15 +87,12 @@ class HistoryController(object):
 		project_dict = {}
 
 		try:
-			for folder in os.listdir(top_level):
-				folder_path = os.path.join(top_level, folder)
-				for filename in os.listdir(folder_path):
-					if filename[-3:] == '.rw':
-						project_dict[filename] = folder_path
-
-		except WindowsError as error:
-			project_dict['No projects found'] = None
-
+			for root, dirs, files in os.walk(top_level):
+				for filename in files:
+					if filename.endswith('.rw'):
+						project_dict[filename] = root
+			if len(project_dict.keys()) == 0:
+				project_dict['No projects found'] = None
 		finally:
 			self._projects = project_dict
 
@@ -103,16 +100,13 @@ class HistoryController(object):
 		"""Process user input and update view."""
 
 		job_num = self.view.job_num
-
 		try:
 			job_root = os.path.basename(
 				Extract.projects_folder_root(job_num)
 			)
 			self.projects = os.path.join(Path.JOBS, job_root, job_num)
-
 		except ProjectsFolderRootError:
 			self.view.input_view.set_listbox(['No PROJECTS FOLDER found'])
-
 		else:
 			self.view.input_view.set_listbox(self.projects.keys())
 
