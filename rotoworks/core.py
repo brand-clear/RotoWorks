@@ -1,5 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""
+rotoworks.core contains absolute paths to default directories and images.
+
+"""
 import sys
 import json
 from os.path import dirname
@@ -10,14 +12,8 @@ from sulzer.extract import Extract, ProjectsFolderRootError
 from pywinscript.win import create_folder
 
 
-__author__ = 'Brandon McCleary'
-
-
 class Path(object):
-    """
-    Default network paths.
-    
-    """
+    """Default network paths."""
 
     if ossplit(sys.executable)[1] == 'python.exe':
         # Dev mode
@@ -35,15 +31,10 @@ class Path(object):
     DOCS = osjoin(ROOT, 'docs')
     BALANCE = "L:\\Division2\\DCC\\1-CAD-FORMS\\BALANCE"
     JOBS = osjoin(DATA, 'jobs')
-    RESOURCES = osjoin(ROOT, "App", "Resources")
 
 
 class Image(object):
-    """
-    Default image paths.
-    
-    """
-
+    """Default image paths."""
     ROOT = Path.IMAGE
     EDIT = osjoin(ROOT, 'edit.png')
     PLAY = osjoin(ROOT, 'play.png')

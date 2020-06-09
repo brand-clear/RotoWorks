@@ -279,11 +279,16 @@ class AxialDoc(TurboDoc):
 		self._machine = Rotor.get_machine_type_as_object(
 			self._definition['Machine Type']
 		)
-		self._row_headers = self._machine.feature_rows(self._scope)
-		self._col_headers = Rotor.stage_names(
-			len(self._scope), 
-			self._definition['Curtis Stage'] == 1
-		)
+		try:
+			self._row_headers = self._machine.feature_rows(self._scope)
+		except:
+			self._row_headers = None
+		else:
+			self._col_headers = Rotor.stage_names(
+				len(self._scope), 
+				self._definition['Curtis Stage'] == 1
+			)
+
 		super(AxialDoc, self).__init__()
 
 	def start(self):
@@ -306,13 +311,14 @@ class AxialDoc(TurboDoc):
 		self.init_doc(self._axials.LAYOUT_NAME)
 		self.data = self.load_measurements(self._axials.OUTPUT_FILE)
 		self._table_data, self._text_data = self._table_text_split(self.data)
-		self._table = DocTable(
-			self, 
-			self._row_headers, 
-			self._col_headers,
-			self._has_bal_drum(self._table_data)
-		)
-		self._table.populate_table(self._table_data)
+		if self._row_headers is not None:
+			self._table = DocTable(
+				self, 
+				self._row_headers, 
+				self._col_headers,
+				self._has_bal_drum(self._table_data)
+			)
+			self._table.populate_table(self._table_data)
 		self.replace_text_with_data(self._text_data)
 		self.regen()
 		self.leave_doc_trail(self._definition['Path to Filename'])

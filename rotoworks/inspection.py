@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import os
 import sys
 import csv
@@ -7,9 +5,6 @@ import pandas as pd
 from PyQt4 import QtGui
 from pywinscript.polyworks import Polyworks
 from core import Path
-
-
-__author__ = 'Brandon McCleary'
 
 
 class Inspection(object):
@@ -34,12 +29,7 @@ class Inspection(object):
 		The AutoCAD layout name designated to this ``Inspection``.
 	polyworks : Polyworks
 
-	See Also
-	--------
-	pywinscript.polyworks.Polyworks
-
 	"""
-
 	PHASES = ["Phase 1", "Phase 2", "Final"]
 
 	@classmethod
@@ -62,7 +52,6 @@ class Inspection(object):
 		self.OUTPUT_FILENAME = "%ss.csv" % self.__class__.__name__
 		self.LAYOUT_NAME = self.__class__.__name__
 		self.polyworks = Polyworks()
-		self.polyworks.connect_to_inspector()
 
 	def macro_exec(self, *args):
 		"""Send a command to PolyWorks Inspector.
@@ -76,13 +65,11 @@ class Inspection(object):
 		"""
 		if len(args) == 2:
 			self.polyworks.inspector.CommandExecute(
-				"""MACRO EXEC ( "%s", "%s" )"""
-				% args
+				"""MACRO EXEC ( "%s", "%s" )""" % args
 			)
 		elif len(args) == 3:
 			self.polyworks.inspector.CommandExecute(
-				"""MACRO EXEC ( "%s", "%s", "%s" )"""
-				% args
+				"""MACRO EXEC ( "%s", "%s", "%s" )""" % args
 			)		
 		
 	def export_as_single_column(self, data, filepath):

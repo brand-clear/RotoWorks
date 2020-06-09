@@ -21,11 +21,13 @@ __status__ 	= 'Production'
 
 class RotoWorks(QtGui.QMainWindow):
 	"""
-	RotoWorks is a Sulzer application that aims to simplify shop inspections. 
+	RotoWorks aims to simplify shop inspections and automate customer 
+	documentation. 
 
-	The inspections are carried out with a portable CMM via PolyWorks and 
-	are validated in real-time per established metrics (see PolyWorks macros). 
-	The inspection data is used to auto-populate a pre-built AutoCAD form.
+	The inspections are carried out with a portable CMM via PolyWorks Inspector 
+	and are validated in real-time per established metrics (see PolyWorks 
+	macros). The inspection data is used to auto-populate a pre-built AutoCAD 
+	form.
 
 	The standard RotoWorks workflow is the following:
 		+ Create a new project
@@ -48,7 +50,7 @@ class RotoWorks(QtGui.QMainWindow):
 		self._view.info_btn.clicked.connect(self._on_click_info)
 
 	def _on_click_new(self):
-		"""Process a request to start a new project."""
+		"""Start a new project."""
 		data = Data()
 		definition = DefinitionController(data)
 		if definition.view.exec_():
@@ -58,7 +60,7 @@ class RotoWorks(QtGui.QMainWindow):
 				workspace.view.exec_()
 
 	def _on_click_open(self):
-		"""Process a request to open an existing project."""
+		"""Open an existing project."""
 		history = HistoryController()
 		if history.view.exec_():
 			data = Data()
@@ -86,6 +88,7 @@ class RotoWorks(QtGui.QMainWindow):
 		workspace.view.show()
 
 	def _on_click_info(self):
+		"""Open the user guide."""
 		try:
 			startfile(osjoin(Path.DOCS, 'RotoWorks User Guide.pdf'))
 		except OSError as error:
