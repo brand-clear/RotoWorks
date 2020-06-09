@@ -1,7 +1,7 @@
 # RotoWorks
 
 ## Overview
-A desktop application that guides users through as-received inspections of used mechanical systems. 
+RotoWorks is a desktop application that guides users through as-received inspections of used mechanical systems. 
 
 ## Dependencies
 To get the most out of this application users should have Innovmetric's PolyWorks Inspector and Autodesk's AutoCAD installed on their local machine. Additionally, a portable CMM device (e.g. Faro Arm) is required to collect the measurements.
