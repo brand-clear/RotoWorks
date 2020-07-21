@@ -5,11 +5,11 @@ import itertools
 from PyQt4 import QtGui, QtCore
 from pyqtauto.widgets import Dialog, ImageButton
 from view import InputListView, InspectionCommandView
+from inspection import Diameter
+from template import Template
 from core import Image, Path
 from machine import Rotor
 from data import Data
-from template import Template
-from inspection import Diameter
 
 
 class DiameterSessionView(Dialog):
@@ -33,7 +33,7 @@ class DiameterSessionView(Dialog):
 
 	def _build_gui(self):
 		"""Display widgets."""
-		self._input = InputListView(self.layout, 'Dimension:', Image.CLOUD)
+		self._input = InputListView(self.layout, 'Dimension:', Image.IMPORT_LEFT)
 		self._input.input_le.setValidator(
 			QtGui.QRegExpValidator(QtCore.QRegExp("[a-z-A-Z-*]+"), self)
 		)
@@ -83,7 +83,7 @@ class DiameterSessionController(object):
 
 	Parameters
 	----------
-	definition : OrderedDict
+	data : Data
 
 	Attributes
 	----------
@@ -95,12 +95,9 @@ class DiameterSessionController(object):
 	# *P is a signal for constraining planes
 	MODIFIERS = ['*H', '*P']
 
-	def __init__(self, definition):
-		self._definition = definition
-		self._machine = Rotor.get_machine_type_as_object(
-			self._definition['Machine Type']
-		)
-		self._diameter = Diameter(self._definition['Path to Filename'])
+	def __init__(self, data):
+		self._data = data
+		self._diameter = Diameter(self._data.path)
 		self._diameter.polyworks.connect_to_inspector()
 		self._alphabet = list(string.ascii_uppercase)
 		self._alphabet.extend(
@@ -245,7 +242,7 @@ class DiameterSessionController(object):
 
 	def _on_click_import(self):
 		"""Send an existing workscope template to PolyWorks for inspection."""
-		if Template.copied(self._definition['Path to Filename'], 'Diameter'):
+		if Template.copied(self._data.path, 'Diameter'):
 			self._diameter.macro_exec(
 				self._diameter.MACRO_IN,
 				self._diameter.SCOPE_FILE,
@@ -253,25 +250,4 @@ class DiameterSessionController(object):
 			)
 
 if __name__ == '__main__':
-	# For test
-	app = QtGui.QApplication(sys.argv)
-	app.setStyle(QtGui.QStyleFactory.create('cleanlooks'))
-
-
-	# Get test data
-	test_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'tests')
-	test_file = '123123_Phase1_CentrifugalCompressor.rw'
-	data = Data()
-	data.open_project(os.path.join(test_dir, test_file))
-
-
-	# Test DiameterSessionView
-	# ------------------------
-	# dialog = DiameterSessionView()
-	# dialog.exec_()
-
-
-	# Test DiameterSessionController
-	# ------------------------------
-	controller = DiameterSessionController(data.definition)
-	controller.view.exec_()
+	pass

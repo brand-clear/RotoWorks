@@ -1,6 +1,7 @@
-import os
+import re
 import sys
 import csv
+import os.path
 import pandas as pd
 from PyQt4 import QtGui
 from pywinscript.polyworks import Polyworks
@@ -22,11 +23,14 @@ class Inspection(object):
 	Attributes
 	----------
 	SCOPE_FILENAME : str
-		The CSV filename that feeds PolyWorks Inspector.
+		The corresponding CSV filename that feeds PolyWorks Inspector.
+
 	OUTPUT_FILENAME : str
-		The CSV filename that feeds AutoCAD.
+		The corresponding CSV filename that feeds AutoCAD.
+
 	LAYOUT_NAME : str
-		The AutoCAD layout name designated to this ``Inspection``.
+		The corresponding AutoCAD layout name.
+
 	polyworks : Polyworks
 
 	"""
@@ -34,22 +38,25 @@ class Inspection(object):
 
 	@classmethod
 	def get_inspection_types(cls):
-		"""Returns the ``list`` of ``Inspection`` subclasses.
+		"""Returns the ``list`` of subclasses.
 		
 		Notes
 		-----
-		This method depends on ``Inspection`` subclass names conforming to 
-		CapWords convention (PEP 8).
+		This method depends on subclass names conforming to CapWords convention 
+		(PEP 8).
 
 		"""
-		children = []
-		for child in cls.__subclasses__():
-			children.append(child.__name__)
-		return children
-	  
+		return [Inspection.split_capwords(child.__name__) 
+			for child in cls.__subclasses__()]
+
+	@staticmethod
+	def split_capwords(value):
+		split = re.findall(r'[A-Z](?:[a-z]+|[A-Z]*(?=[A-Z]|$))', value)
+		return ' '.join(split)
+
 	def __init__(self):
 		self.SCOPE_FILENAME = "%sScope.csv" % self.__class__.__name__
-		self.OUTPUT_FILENAME = "%ss.csv" % self.__class__.__name__
+		self.OUTPUT_FILENAME = "%s.csv" % self.__class__.__name__
 		self.LAYOUT_NAME = self.__class__.__name__
 		self.polyworks = Polyworks()
 
@@ -60,7 +67,7 @@ class Inspection(object):
 		----------
 		args : tuple
 			The first argument must be the path to a PWMACRO file. The following
-			arguments are passed to the PWMACRO file.
+			arguments are passed to the PWMACRO script.
 
 		"""
 		if len(args) == 2:
@@ -78,7 +85,9 @@ class Inspection(object):
 		Parameters
 		----------
 		data : list
-		filepath : str 
+
+		filepath : str
+			Absolute path to CSV file.
 		
 		"""
 		with open(filepath, "wb") as csvfile:
@@ -92,7 +101,9 @@ class Inspection(object):
 		Parameters
 		----------
 		data : 2D list
-		filepath : str 
+
+		filepath : str
+			Absolute path to CSV file.
 		
 		"""
 		with open(filepath, "wb") as csvfile:
@@ -107,20 +118,28 @@ class Diameter(Inspection):
 	Parameters
 	----------
 	path : str
-		Absolute path to a RotoWorks project workspace.
+		Absolute path to a ROTOWORKS project directory.
 	
 	Attributes
 	----------
 	current_session : list
+
 	SCOPE_FILE : str
-		Absolute path to the file that drives a PolyWorks inspection. 
+		Absolute path to CSV file that feeds PolyWorks Inspector.
+
 	OUTPUT_FILE : str
-		Absolute path to the file that drives AutoCAD documentation.
+		Absolute path to CSV file that feeds Autodesk AutoCAD.
+
 	MACRO_IN : str
 		Absolute path to the PolyWorks macro that drives an inspection.
+
 	MACRO_OUT : str
 		Absolute path to the PolyWorks macro that exports inspection 
 		documentation.
+
+	See Also
+	--------
+	Inspection
 
 	"""
 	def __init__(self, path):
@@ -168,23 +187,26 @@ class Axial(Inspection):
 	Parameters
 	----------
 	path : str
-		Absolute path to a RotoWorks project workspace.
+		Absolute path to a ROTOWORKS project directory.
 	
 	Attributes
 	----------
 	SCOPE_FILE : str
-		Absolute path to the file that drives a PolyWorks inspection. 
+		Absolute path to CSV file that feeds PolyWorks Inspector.
+
 	OUTPUT_FILE : str
-		Absolute path to the file that drives AutoCAD documentation.
+		Absolute path to CSV file that feeds Autodesk AutoCAD.
+
 	MACRO_IN : str
 		Absolute path to the PolyWorks macro that drives an inspection.
+
 	MACRO_OUT : str
 		Absolute path to the PolyWorks macro that exports inspection 
 		documentation.
 
 	"""
 	def __init__(self, path):
-		Inspection.__init__(self)
+		super(Axial, self).__init__()
 		self._current_session = None
 		self.SCOPE_FILE = os.path.join(path, self.SCOPE_FILENAME)
 		self.OUTPUT_FILE = os.path.join(path, self.OUTPUT_FILENAME)
@@ -233,7 +255,6 @@ class Axial(Inspection):
 				stage = target.split(' ')[1]
 				new_row.append(target)
 				new_row.extend(machine.probe_targets(scope[stage]))
-				print new_row
 			elif 'Balance Drum' == target:
 				new_row.append(target)
 			elif 'Distance' in target:
@@ -262,5 +283,20 @@ class Axial(Inspection):
 		self.export_as_multi_column(self._current_session, self.SCOPE_FILE)
 
 
-if __name__ == "__main__":
-	data = pd.read_csv('C:\\Users\\mcclbra\Desktop\diams.csv')
+class ThermalGap(Inspection):
+	
+	def __init__(self, path):
+		super(ThermalGap, self).__init__()
+		self.LAYOUT_NAME = 'Axial'
+		self.OUTPUT_FILE = os.path.join(path, self.OUTPUT_FILENAME)
+
+
+class RotorWeight(Inspection):
+
+	def __init__(self, path):
+		super(RotorWeight, self).__init__()
+		self.LAYOUT_NAME = 'Axial'
+		self.OUTPUT_FILE = os.path.join(path, self.OUTPUT_FILENAME)
+
+if __name__ == '__main__':
+	pass

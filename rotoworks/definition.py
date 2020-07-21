@@ -2,93 +2,96 @@ import sys
 import os.path
 from collections import OrderedDict
 from PyQt4 import QtGui, QtCore
-from pyqtauto.widgets import (
-	Dialog, ComboBox, 
-	DialogButtonBox, 
-	ExceptionMessageBox
-)
-from sulzer.extract import Extract, ProjectsFolderRootError
-from pywinscript.win import create_folder
+from pyqtauto.widgets import ComboBox, DialogButtonBox, ExceptionMessageBox
+from sulzer.extract import ProjectsFolderRootError
 from inspection import Inspection
 from machine import Rotor
-from core import Path
-from data import Data
+from project import Project
+from core import setup_logger
+import logging
 
 
-__author__ = 'Brandon McCleary'
+setup_logger()
 
 
-class DefinitionView(Dialog):
+class DefinitionView(QtGui.QWidget):
 	"""
-	Displays the project definition window.
-
-	Parameters
-	----------
-	phases : list
-	machine_types : list
-	machine_sub_types : list
+	Displays project definition GUI.
 
 	Attributes
 	----------
-	machine_cb : ComboBox
-	ok : DialogButtonBox
 	job_num : str
+
 	phase : str
+
 	machine_type : str
+
 	machine_sub_type : str
+
 	nickname : str
+
 	is_curtis : bool
 
-	"""
-	def __init__(self, phases, machine_types, machine_sub_types, 
-			machine_callback, accepted_callback):
-		self._phases = phases
-		self._machine_types = machine_types
-		self._machine_sub_types = machine_sub_types
-		self._machine_callback = machine_callback
-		self._accepted_callback = accepted_callback
-		super(DefinitionView, self).__init__('Project Definition')
-		self._build_gui()
+	btn : DialogButtonBox
+		Clicked to create new project.
 
-	def _build_gui(self):
-		"""Fill and display widgets."""
+	"""
+	def __init__(self):
+		super(DefinitionView, self).__init__()
+		self._main_layout = QtGui.QVBoxLayout(self)
+		self._form_layout = QtGui.QFormLayout()
+		self._form_layout.setSpacing(20)
 		# Init widgets
-		self._form = QtGui.QFormLayout()
 		self._job_le = QtGui.QLineEdit()
+		self._phase_cb = ComboBox(Inspection.PHASES)
+		self._machine_cb = ComboBox(Rotor.get_machine_types())
+		self._sub_cb = ComboBox(Rotor.get_machine_sub_types())
+		self._name_le = QtGui.QLineEdit()
+		# Configure widgets
 		self._job_le.setValidator(QtGui.QIntValidator())
 		self._job_le.setMaxLength(6)
-		self._phase_cb = ComboBox(self._phases)
-		self.machine_cb = ComboBox(self._machine_types)
-		self._sub_cb = ComboBox(self._machine_sub_types)
-		self._name_le = QtGui.QLineEdit()
 		self._name_le.setValidator(
 			QtGui.QRegExpValidator(QtCore.QRegExp("[a-z-A-Z_0-9]+"), self)
 		)
-		# Place widgets
-		self._form.addRow(QtGui.QLabel('Job Number:'), self._job_le)
-		self._form.addRow(QtGui.QLabel('Phase:'), self._phase_cb)
-		self._form.addRow(QtGui.QLabel('Machine:'), self.machine_cb)
-		self._form.addRow(QtGui.QLabel('Sub Type:'), self._sub_cb)
-		self._form.addRow(QtGui.QLabel('Nickname:'), self._name_le)
-		self.layout.addLayout(self._form)
-		self.ok = DialogButtonBox(self.layout)
-		# Connect to callbacks
-		self.machine_cb.activated.connect(self._machine_callback)
-		self.ok.accepted.connect(self._accepted_callback)
+		self._machine_cb.activated.connect(self._on_select_machine)
+		# Add widgets to layout
+		self._form_layout.addRow(QtGui.QLabel('Job Number:'), self._job_le)
+		self._form_layout.addRow(QtGui.QLabel('Phase:'), self._phase_cb)
+		self._form_layout.addRow(QtGui.QLabel('Machine:'), self._machine_cb)
+		self._form_layout.addRow(QtGui.QLabel('Sub Type:'), self._sub_cb)
+		self._form_layout.addRow(QtGui.QLabel('Nickname:'), self._name_le)
+		self._main_layout.addLayout(self._form_layout)
+		self.btn = DialogButtonBox(self._main_layout)
 
-	def display_optional_gui(self):
-		# Optional widgets are only valid for Steam Turbine machines.
+	def _on_select_machine(self):
+		"""Respond to machine selection with appropriate GUI."""
+		if str(self._machine_cb.currentText()) == 'Steam Turbine':
+			self._display_context_gui()
+		else:
+			self._remove_context_gui()
+
+	def _display_context_gui(self):
+		self._curtis_lb = QtGui.QLabel('Curtis Stage')
 		self._curtis_chk = QtGui.QCheckBox()
-		self._curtis_lb = QtGui.QLabel('Curtis Stage:')
-		self._form.insertRow(3, self._curtis_lb, self._curtis_chk)
+		self._form_layout.insertRow(3, self._curtis_lb, self._curtis_chk)
 
-	def remove_optional_gui(self):
-		# Optional widgets are only valid for Steam Turbine machines.
+	def _remove_context_gui(self):
 		try:
 			self._curtis_chk.deleteLater()
 			self._curtis_lb.deleteLater()
 		except (RuntimeError, AttributeError):
 			pass
+
+	def clear(self):
+		"""Reset all inputs to default values."""
+		self._job_le.setText('')
+		self._phase_cb.setCurrentIndex(0)
+		self._machine_cb.setCurrentIndex(0)
+		self._sub_cb.setCurrentIndex(0)
+		self._name_le.setText('')
+
+	def focus(self):
+		self._job_le.setFocus()
 
 	@property
 	def job_num(self):
@@ -97,31 +100,31 @@ class DefinitionView(Dialog):
 
 	@property
 	def phase(self):
-		"""str: The inspection phase for this project."""
+		"""str: The selected inspection phase."""
 		return str(self._phase_cb.currentText())
 
 	@property
 	def machine_type(self):
-		"""str: The type of machine for this project."""
-		return str(self.machine_cb.currentText())
+		"""str: The selected machine type."""
+		return str(self._machine_cb.currentText())
 
 	@property
 	def machine_sub_type(self):
-		"""str: A sub-type of the machine for this project."""
+		"""str: The selected machine sub type."""
 		return str(self._sub_cb.currentText())
 
 	@property
 	def nickname(self):
-		"""str: A name used to help distinguish this project from others."""
+		"""str: The nickname input."""
 		return str(self._name_le.text())
 
 	@property
 	def is_curtis(self):
-		"""bool : True if this machine has a curtis stage.
+		"""bool : Refers to the machine having a Curtis Stage.
 
 		Notes
 		-----
-		Curtis stages are only valid for Steam Turbine machines.
+		Curtis stages are only valid for Steam Turbines.
 
 		"""
 		try:
@@ -132,163 +135,56 @@ class DefinitionView(Dialog):
 
 class DefinitionController(object):
 	"""
-	Provides a functional GUI for creating a project definition file.
-
-	Parameters
-	----------
-	data : Data
-		Active data model.
+	Provides a functional GUI for creating a project data file.
 
 	Attributes
 	----------
 	view : DefinitionView
+		Provides GUI.
+
+	view.btn : DialogButtonBox
+		Clicked to initiate creation of new project.
 
 	"""
-	def __init__(self, data):
-		self._data = data
-		self.view = DefinitionView(
-			Inspection.PHASES, 
-			Rotor.get_machine_types(), 
-			Rotor.get_machine_sub_types(),
-			self._on_select_machine,
-			self._on_click_ok
-		)
+	def __init__(self):
+		self.view = DefinitionView()
 
-	def _on_select_machine(self):
-		"""Handle optional GUI."""
-		if self.view.machine_type == 'Steam Turbine':
-			self.view.display_optional_gui()
-		else:
-			self.view.remove_optional_gui()
-
-	def _get_project_folder(self, job_num, phase):
-		"""Get the absolute path to a ROTOWORKS project folder.
-
-		Parameters
-		----------
-		job_num : str
-		phase : str
-		
-		Returns
-		-------
-		rw_project_folder : str
-
-		Raises
-		------
-		ProjectsFolderRoot
-			If the PROJECTS FOLDER root cannot be found. This path is used to 
-			help determine the ROTOWORKS path.
-		WindowsError
-			If a ROTOWORKS folder could not be created due to a missing link.
-
-		"""
-		# Search for the PROJECTS FOLDER root
-		try:
-			pfolder_root = Extract.projects_folder_root(job_num)
-		except ProjectsFolderRootError as error:
-			msg = 'Make sure this job has a valid PROJECTS FOLDER and try again'
-			error.message = "%s\n%s." % (error.message, msg)
-			raise error
-
-		# Create the ROTOWORKS project folder
-		try:
-			rw_job_root = create_folder(
-				os.path.join(Path.JOBS, os.path.basename(pfolder_root))
-			)
-			rw_job_folder = create_folder(os.path.join(rw_job_root, job_num))
-			rw_project_folder = create_folder(
-				os.path.join(rw_job_folder, phase)
-			)
-			if len(self.view.machine_sub_type) > 1:
-				# An empty string of len(1) is used as a placeholder
-				rw_project_folder = create_folder(
-					os.path.join(rw_project_folder, self.view.machine_sub_type)
-				)
-			if len(self.view.nickname) > 0:
-				rw_project_folder = create_folder(
-					os.path.join(rw_project_folder, self.view.nickname)
-				)
-		except WindowsError as error:
-			raise error
-
-		return rw_project_folder
-
-	def _get_definition_filename(
-			self, job_num, phase, machine_type, machine_sub_type, nickname
-		):
-		"""Get the filename that will store a ROTOWORKS project.
-
-		Parameters
-		----------
-		job_num : str
-		phase : str
-		machine_type : str
-		machine_sub_type : str
-		nickname : str
+	def create(self):
+		"""Setup filepaths and serialize data model.
 
 		Returns
 		-------
-		filename : str
+		data : Data
+			Project data model.
 
 		"""
-		filename = '%s_%s_%s_%s_%s.rw' % (
-			job_num,
-			phase,
-			machine_type,
-			machine_sub_type,
-			nickname
-		)
-		# Strip whitespace and duplicate underscores
-		filename = filename.replace(' ', '')
-		filename = filename.replace('__', '_')
-		filename = filename.replace('_.', '.')
-		return filename
+		# Get inputs from view
+		job_num = self.view.job_num
+		phase = self.view.phase
+		machine_type = self.view.machine_type
+		subtype = self.view.machine_sub_type
+		is_curtis = self.view.is_curtis
+		nickname = self.view.nickname
 
-	def _on_click_ok(self):
-		"""Process project definition request."""
-		# Set up directory
 		try:
-			folder = self._get_project_folder(
-				self.view.job_num, 
-				self.view.phase
+			# Setup filepath
+			filepath = Project.filepath(
+				job_num, phase, machine_type, subtype, nickname
 			)
-		except (ProjectsFolderRootError, WindowsError) as error:
-			ExceptionMessageBox(error).exec_()
-			return
 
-		# Get project filepath
-		filename = self._get_definition_filename(
-			self.view.job_num,
-			self.view.phase,
-			self.view.machine_type,
-			self.view.machine_sub_type,
-			self.view.nickname
-		)
-		filepath = os.path.join(folder, filename)
+			if os.path.exists(filepath):
+				if ExistingProjectError.proceed(self.view) != QtGui.QMessageBox.Yes:
+					return
 
-		# Prompt user if project conflict is found
-		if os.path.exists(filepath):
-			if ExistingProjectError.proceed(self.view) != QtGui.QMessageBox.Yes:
-				return
-
-		# Build definition
-		self._data.definition = OrderedDict([
-			('Job Number', self.view.job_num),
-			('Phase', self.view.phase),
-			('Machine Type', self.view.machine_type),
-			('Curtis Stage', self.view.is_curtis),
-			('Path to Filename', folder),
-			('Filename', filename),
-			('Ref Filename', None)
-		])
-
-		# Save definition to file
-		try:
-			self._data.save_project()
-		except IOError as error:
+			# Save data to file
+			data = Project.init_data(
+				job_num, phase, machine_type, is_curtis, filepath
+			)
+		except (IOError, ProjectsFolderRootError, WindowsError) as error:
+			logging.warning(error)
 			ExceptionMessageBox(error).exec_()
 		else:
-			self.view.accept()
+			return data
 
 
 class ExistingProjectError(object):
@@ -306,12 +202,13 @@ class ExistingProjectError(object):
 
 		Parameters
 		----------
-		parent : Dialog
+		parent : QWidget subclass
 
 		Returns
 		-------
 		QtGui.QMessageBox.Yes
 			If user decides to override an existing project.
+			
 		QtGui.QMessageBox.Yes
 			If user decides to cancel a project override.
 		
@@ -325,25 +222,4 @@ class ExistingProjectError(object):
 
 
 if __name__ == '__main__':
-	# For test
-	app = QtGui.QApplication(sys.argv)
-
-
-	# Test DefinitionView
-	# -------------------
-	# view = DefinitionView(
-	# 	Inspection.PHASES, 
-	# 	Rotor.get_machine_types(), 
-	# 	Rotor.get_machine_sub_types()
-	# )
-	# view.exec_()
-
-
-	# Test DefinitionController
-	# -------------------------
-	controller = DefinitionController(Data())
-	controller.view.exec_()
-
-
-	# Test ExistingProjectError
-	# ExistingProjectError.proceed(None)
+	pass

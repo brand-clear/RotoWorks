@@ -1,124 +1,259 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-import os
-import json
-import collections
+import os.path
+import cPickle as pickle
+from collections import OrderedDict
+from abc import ABCMeta, abstractmethod
+from pyqtauto.widgets import TableCheckBox
+from core import Path, setup_logger
+from machine import Rotor
+import logging
 
 
-__author__ = 'Brandon McCleary'
+setup_logger()
 
 
 class Data(object):
-    """
-    Project data model.
+	"""
+	Project data source.
 
-    Attributes
-    ----------
-    definition : OrderedDict
-        A high-level description of the project (machine).
-        
-    scope : OrderedDict
-        Contains information about the stages (disks/impellers) of a machine.
-        
-    """
-    def __init__(self):
-        self._definition = None
-        self._scope = None
+	Attributes
+	----------
+	job_num : str
+	phase : str
+	machine_type : str
+	is_curtis : bool
+	path : str
+	filename : str
+	machine_obj : Rotor subclass
+	features : list
+	scope : ScopeModel
+	
+	"""
+	def __init__(self, job_num, phase, machine_type, is_curtis, filepath):
+		self.job_num = job_num
+		self.phase = phase
+		self.machine_type = machine_type
+		self.machine_obj = Rotor.get_machine_type_as_object(self.machine_type)
+		self.features = self.machine_obj.FEATURES
+		self.is_curtis = is_curtis
+		self.path, self.filename = os.path.split(filepath)
+		self.filepath = filepath
+		self.scope = ScopeModel(is_curtis, len(self.features))
 
-    @property
-    def definition(self):
-        """OrderedDict or None: The project definition.
-        
-        Keys : {
-            'Job Number', 'Phase', 'Machine Type', 'Curtis Stage', 
-            'Path to Filename', 'Filename', 'Ref Filename'
-        }
-        
-        """
-        return self._definition
+	def save(self):
+		"""Save this instance to file.
 
-    @definition.setter
-    def definition(self, data):
-        """
-        Parameters
-        ----------
-        data : OrderedDict
-            Structured as defined by ``DefinitionController``.
+		Raises
+		------
+		IOError
+			If the system cannot find the path specified.
 
-        """
-        self._definition = data
+		"""
+		try:
+			with open(self.filepath, "wb") as project:
+				pickle.dump(self, project)
+		except IOError as error:
+			logging.warning(error)
+			raise error
 
-    @property
-    def scope(self):
-        """OrderedDict or None: The project inspection scope.
 
-        The keys will represent the machine's stages and the values will 
-        represent the features targeted for inspection.
+class DataModel(object):
+	"""
+	Data model base class.
 
-        """
-        return self._scope
+	The structure of this model is provided by an ``OrderedDict``, where the 
+	keys are integer strings and the values are lists whose data is provided by
+	the subclass. The keys correspond to stage numbers and the values correspond
+	to yes or no.
 
-    @scope.setter
-    def scope(self, data):
-        """
-        Parameters
-        ----------
-        data : OrderedDict
-            Structured as defined by ``ScopeController``.
+	Parameters
+	----------
+	is_curtis : bool
+		An assertion that a machine contains a curtis stage.
+	feature_count : int
+		The number of possible measurement features in an axial inspection.
 
-        """
-        self._scope = data
+	Attributes
+	----------
+	data : OrderedDict
+	is_curtis : bool
+	feature_count : int
 
-    def open_project(self, filepath):
-        """Load project data from file.
-        
-        Parameters
-        ----------
-        filepath : str
-            Absolute path to the project file.
-            
-        Raises
-        ------
-        ValueError
-            If no data is found in `filepath`.
-        IOError
-            If the system cannot find the path specified.
+	Methods
+	-------
+	clear
+	init
 
-        """
-        try:
-            with open(filepath, "rb") as project:
-                data = json.load(
-                    project, 
-                    object_pairs_hook=collections.OrderedDict
-                )
-        except (IOError, ValueError) as error:
-            raise error
-        else:
-            # Set project data
-            self.definition = data[0]
-            self.scope = data[1]
+	Notes
+	-----
+	update() must be implemented by the subclass.
+	
+	"""
 
-    def save_project(self):
-        """Save project data to file.
+	__metaclass__ = ABCMeta
 
-        Raises
-        ------
-        IOError
-            If the system cannot find the path specified.
+	def __init__(self, is_curtis, feature_count):
+		self.data = OrderedDict()
+		self.is_curtis = is_curtis
+		self.feature_count = feature_count
+		super(DataModel, self).__init__()
 
-        """
-        data = [self.definition, self.scope]
-        path = os.path.join(
-            self.definition["Path to Filename"], 
-            self.definition["Filename"]
-        )
-        try:
-            with open(path, "wb") as project:
-                json.dump(data, project)
-        except IOError as error:
-            raise error
+	def clear(self):
+		"""Empty ``DataModel``."""
+		for key in self.data.keys():
+			del self.data[key]
 
-       
+	def init(self, stage_count, value):
+		"""Initializes model with default values.
+		
+		Parameters
+		----------
+		stage_count : int
+		value : int or TableCheckBox
+
+		"""
+		self.clear()
+		stage_labels = Rotor.stage_names(stage_count, self.is_curtis)
+		stage_labels = [i.replace('Stage ', '') for i in stage_labels]
+		for label in stage_labels:
+			try:
+				self.data[label] = [value()] * self.feature_count
+			except TypeError:
+				self.data[label] = [value] * self.feature_count
+
+	@abstractmethod
+	def update(self):
+		"""To be implemented by subclass."""
+		pass
+
+
+class ScopeModel(DataModel):
+	"""
+	A ``DataModel`` whose list values are binary integers.
+
+	This subclass is to contain responses to yes or no questions (as indicated 
+	by binary integers) and may be serialized.
+
+	Parameters
+	----------
+	is_curtis : bool
+		An assertion that a machine contains a curtis stage.
+	feature_count : int
+		The number of possible measurement features in an axial inspection.
+
+	Attributes
+	----------
+	data : OrderedDict
+		Underlying data source
+
+	"""
+	def __init__(self, is_curtis, feature_count):
+		super(ScopeModel, self).__init__(is_curtis, feature_count)
+
+	def init(self, stage_count):
+		"""Initialize with zeros (unselected options).
+		
+		Parameters
+		----------
+		stage_count : int
+
+		"""
+		super(ScopeModel, self).init(stage_count, 0)
+
+	def update(self, table_map):
+		"""Map object content from a ``TableMap`` instance.
+
+		Parameters
+		----------
+		table_map : TableMap
+
+		"""
+		for key in table_map.data:
+			self.data[key] = []
+			for i in range(len(table_map.data.keys()[0])):
+				if table_map.data[key][i].isChecked():
+					self.data[key].append(1)
+				else:
+					self.data[key].append(0)
+
+
+class TableMap(DataModel):
+	"""
+	A ``DataModel`` whose list values are ``TableCheckBox`` objects.
+
+	This subclass is to contain responses to yes or no questions (as indicated 
+	by the ``TableCheckBox`` checked states) and cannot be serialized; it exists 
+	only to hold temporary graphical state. 
+	
+	Parameters
+	----------
+	is_curtis : bool
+		An assertion that a machine contains a curtis stage.
+	feature_count : int
+		The number of possible measurement features in an axial inspection.
+
+	Attributes
+	----------
+	data : OrderedDict
+		Underlying data source
+
+	Notes
+	-----
+	To save the state of a ``TableMap`` object, map the instance to a 
+	``ScopeModel`` instace.
+
+	"""
+	def __init__(self, is_curtis, feature_count):
+		super(TableMap, self).__init__(is_curtis, feature_count)
+		
+	def init(self, stage_count):
+		"""Initialize with unchecked ``TableCheckBox`` objects.
+				
+		Parameters
+		----------
+		stage_count : int
+		
+		"""
+		super(TableMap, self).init(stage_count, TableCheckBox)
+
+	def update(self, scope_model):
+		"""Map object content from a ``ScopeModel`` instance.
+
+		Parameters
+		----------
+		scope_model : ScopeModel
+
+		"""
+		self.clear()
+		for stage in scope_model.data:
+			self.data[stage] = []
+			for item in scope_model.data[stage]:
+				self.data[stage].append(TableCheckBox(checked=(item == 1)))
+
+
+def get_data_source(path):
+	"""Retrieve data source object from file.
+
+	Parameters
+	----------
+	path : str
+		Absolute path to data file.
+
+	Returns
+	-------
+	data : Data
+
+	"""
+	try:
+		with open(path, 'rb') as project:
+			data = pickle.load(project)
+	except IOError:
+		raise
+	else:
+		return data
+
+
 if __name__ == '__main__':
-    pass
+	pass
+
+
 

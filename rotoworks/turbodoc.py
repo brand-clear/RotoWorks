@@ -1,24 +1,14 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import sys
 import logging
+import numpy as np
 import pandas as pd
 from warnings import simplefilter
 from comtypes import COMError
 from os.path import join as osjoin
-from pywinscript.autocad import (
-	AutoCAD, 
-	CADOpenError, 
-	CADLayerError, 
-	CADDocError, 
-	CADTable,
-	ACAD
-)
+from pywinscript.autocad import (AutoCAD, CADOpenError, CADLayerError, 
+	CADDocError, CADTable, ACAD)
+from inspection import Diameter, Axial, ThermalGap, RotorWeight
 from machine import Rotor
-from inspection import Diameter, Axial
-
-
-__author__ = 'Brandon'
 
 
 # Debugging logger
@@ -40,7 +30,7 @@ class TurboDoc(AutoCAD):
 	def __init__(self):
 		self.DOC_TRAIL = '%s.%s' % (self.__class__.__name__, 'txt')
 		super(TurboDoc, self).__init__()
-	
+
 	def init_doc(self, layout_name):
 		"""Prepare AutoCAD document for automated input.
 		
@@ -67,13 +57,16 @@ class TurboDoc(AutoCAD):
 		except AttributeError:
 			raise
 
-	def load_measurements(self, filepath):
+	def load_measurements(self, filepath, float_req=True):
 		"""Retrieve measurement session data from a CSV file.
 
 		Parameters
 		----------
 		filepath : str
 			Abolute path to CSV file.
+		
+		float_req: bool
+			If 'Meas' items need to be of type float.
 
 		Returns
 		-------
@@ -87,6 +80,10 @@ class TurboDoc(AutoCAD):
 		"""
 		try:
 			session = pd.read_csv(filepath)
+			session.dropna(subset=['Meas'], inplace=True)
+			if float_req:
+				session = session[session.Name != 'Name']
+				session['Meas'] = session['Meas'].astype(np.float64)
 		except IndexError:
 			raise
 		else:
@@ -264,7 +261,7 @@ class DocTable(CADTable):
 
 class AxialDoc(TurboDoc):
 	"""
-	Provides methods which support AutoCAD automation for axial inspection 
+	Provides methods which support AutoCAD automation for Axial inspection 
 	documentation packages.
 
 	Parameters
@@ -273,22 +270,18 @@ class AxialDoc(TurboDoc):
 
 	"""
 	def __init__(self, data):
-		self._definition = data.definition
-		self._scope = data.scope
-		self._axials = Axial(self._definition['Path to Filename'])
-		self._machine = Rotor.get_machine_type_as_object(
-			self._definition['Machine Type']
-		)
+		self._data = data
+		self._scope = data.scope.data
+		self._axials = Axial(self._data.path)
 		try:
-			self._row_headers = self._machine.feature_rows(self._scope)
+			self._row_headers = self._data.machine_obj.feature_rows(self._scope)
 		except:
 			self._row_headers = None
 		else:
 			self._col_headers = Rotor.stage_names(
 				len(self._scope), 
-				self._definition['Curtis Stage'] == 1
+				self._data.is_curtis == 1
 			)
-
 		super(AxialDoc, self).__init__()
 
 	def start(self):
@@ -309,19 +302,19 @@ class AxialDoc(TurboDoc):
 
 		"""
 		self.init_doc(self._axials.LAYOUT_NAME)
-		self.data = self.load_measurements(self._axials.OUTPUT_FILE)
-		self._table_data, self._text_data = self._table_text_split(self.data)
+		data = self.load_measurements(self._axials.OUTPUT_FILE)
+		table_data, text_data = self._table_text_split(data)
 		if self._row_headers is not None:
 			self._table = DocTable(
 				self, 
 				self._row_headers, 
 				self._col_headers,
-				self._has_bal_drum(self._table_data)
+				self._has_bal_drum(table_data)
 			)
-			self._table.populate_table(self._table_data)
-		self.replace_text_with_data(self._text_data)
+			self._table.populate_table(table_data)
+		self.replace_text_with_data(text_data)
 		self.regen()
-		self.leave_doc_trail(self._definition['Path to Filename'])
+		self.leave_doc_trail(self._data.path)
 
 	def _has_bal_drum(self, data):
 		"""Verify the existence of a balance drum measurement.
@@ -385,19 +378,18 @@ class AxialDoc(TurboDoc):
 
 class DiameterDoc(TurboDoc):
 	"""
-	Provides methods which support AutoCAD automation for diameter inspection 
+	Provides methods which support AutoCAD automation for Diameter inspection 
 	documentation packages.
 
 	Parameters
 	----------
-	path : str
-		Absolute path to a RotoWorks project workspace.
+	data : Data
+		Active data model.
 
 	"""
-
-	def __init__(self, path):
-		self._path = path
-		self.diameters = Diameter(self._path)
+	def __init__(self, data):
+		self._path = data.path
+		self._diameters = Diameter(self._path)
 		super(DiameterDoc, self).__init__()
 
 	def start(self):
@@ -417,29 +409,92 @@ class DiameterDoc(TurboDoc):
 			If the system cannot find the path specified.
 
 		"""
-		self.init_doc(self.diameters.LAYOUT_NAME)
-		self.data = self.load_measurements(self.diameters.OUTPUT_FILE)
-		self.replace_text_with_data(self.data)
+		self.init_doc(self._diameters.LAYOUT_NAME)
+		data = self.load_measurements(self._diameters.OUTPUT_FILE)
+		self.replace_text_with_data(data)
+		self.regen()
+		self.leave_doc_trail(self._path)
+
+
+class ThermalGapDoc(TurboDoc):
+	"""
+	Provides methods which support AutoCAD automation for Thermal Gap inspection
+	documentation packages.
+
+	Parameters
+	----------
+	data : Data
+		Active data model.
+
+	"""
+	def __init__(self, data):
+		self._path = data.path
+		self._tg = ThermalGap(self._path)
+		super(ThermalGapDoc, self).__init__()
+
+	def start(self):
+		"""Initiate Thermal Gap inspection documentation.
+
+		Raises
+		------
+		CADOpenError
+			If AutoCAD is unavailable (license issue or startup pending).
+		CADDocError
+			If the AutoCAD document could not be found.
+		CADLayerError
+			If the AutoCAD document layer is locked.
+		AttributeError
+			If the AutoCAD layout could not be found.
+		IOError
+			If the system cannot find the path specified.
+
+		"""
+		self.init_doc(self._tg.LAYOUT_NAME)
+		data = self.load_measurements(self._tg.OUTPUT_FILE)
+		self.replace_text_with_data(data)
+		self.regen()
+		self.leave_doc_trail(self._path)
+
+
+class RotorWeightDoc(TurboDoc):
+	"""
+	Provides methods which support AutoCAD automation for Rotor Weight 
+	inspection documentation packages.
+
+	Parameters
+	----------
+	data : Data
+		Active data model.
+
+	"""
+	def __init__(self, data):
+		self._path = data.path
+		self._weights = RotorWeight(self._path)
+		super(RotorWeightDoc, self).__init__()
+
+	def start(self):
+		"""Initiate Rotor Weight inspection documentation.
+
+		Raises
+		------
+		CADOpenError
+			If AutoCAD is unavailable (license issue or startup pending).
+		CADDocError
+			If the AutoCAD document could not be found.
+		CADLayerError
+			If the AutoCAD document layer is locked.
+		AttributeError
+			If the AutoCAD layout could not be found.
+		IOError
+			If the system cannot find the path specified.
+
+		"""
+		self.init_doc(self._weights.LAYOUT_NAME)
+		data = self.load_measurements(self._weights.OUTPUT_FILE, False)
+		self.replace_text_with_data(data)
 		self.regen()
 		self.leave_doc_trail(self._path)
 
 
 if __name__ == '__main__':
-	# For test
-	from data import Data
-
-	# Get test data
-	test_dir = 'C:\\Users\\mcclbra\\Desktop\\development\\rotoworks\\tests'
-	# test_file = '123123_Phase1_CentrifugalCompressor.rw'
-	test_file = '123123_Phase1_SteamTurbine.rw'
-
-	data = Data()
-	data.open_project(osjoin(test_dir, test_file))
-
-	# Test AxialDoc
-	# -------------
-	ax = AxialDoc(data)
-
-	# Test DiameterDoc
-	# ----------------
-	# dia = DiameterDoc(test_dir)
+	pass

@@ -33,10 +33,6 @@ class AxialSessionView(Dialog):
 		self._start_callback = start_callback
 		self._finish_callback = finish_callback
 		super(AxialSessionView, self).__init__('Axial Session')
-		self._build_gui()
-
-	def _build_gui(self):
-		"""Display widgets."""
 		self.setFixedWidth(450)
 		self.setMinimumHeight(300)
 		self.layout.setSpacing(20)
@@ -85,17 +81,13 @@ class AxialSessionController(object):
 
 	"""
 	def __init__(self, data):
-		self._definition = data.definition
-		self._scope = data.scope
-		self._axial = Axial(self._definition['Path to Filename'])
+		self._data = data
+		self._axial = Axial(self._data.path)
 		self._axial.polyworks.connect_to_inspector()
-		self._machine = Rotor.get_machine_type_as_object(
-			self._definition['Machine Type']
-		)
 		try:
 			self._session_options = Rotor.stage_names(
-				len(self._scope),
-				self._definition['Curtis Stage'] == 1
+				len(self._data.scope.data),
+				self._data.is_curtis == 1
 			)
 		except TypeError:
 			# object of type 'NoneType' has no len()
@@ -160,8 +152,8 @@ class AxialSessionController(object):
 		"""Initiate a PolyWorks inspection."""
 		self._axial.current_session = [
 			self._session_targets, 
-			self._machine, 
-			self._scope
+			self._data.machine_obj, 
+			self._data.scope.data
 		]
 		self._axial.publish()
 		del self._axial.current_session
@@ -185,7 +177,7 @@ class AxialSessionController(object):
 
 	def _on_click_import(self):
 		"""Send an existing workscope template to PolyWorks for inspection."""
-		if Template.copied(self._definition['Path to Filename'], 'Axial'):
+		if Template.copied(self._data.path, 'Axial'):
 			self._axial.macro_exec(
 				self._axial.MACRO_IN,
 				self._axial.SCOPE_FILE,

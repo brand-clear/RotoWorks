@@ -25,11 +25,11 @@ class HistoryView(Dialog):
 	def __init__(self, search_callback):
 		self._search_callback = search_callback
 		super(HistoryView, self).__init__('Open Project')
-		self._build_gui()
-
-	def _build_gui(self):
-		"""Display widgets."""
-		self.input_view = InputListView(self.layout, 'Job Number:', Image.SEARCH)
+		self.input_view = InputListView(
+			self.layout, 
+			'Job Number:', 
+			Image.SEARCH
+		)
 		self.input_view.listbox.setSelectionMode(
 			QtGui.QAbstractItemView.SingleSelection
 		)
@@ -112,20 +112,5 @@ class HistoryController(object):
 
 
 if __name__ == '__main__':
-	# For test
-	app = QtGui.QApplication(sys.argv)
-	app.setStyle(QtGui.QStyleFactory.create('cleanlooks'))
-
-
-	# Test HistoryView
-	# -------------------
-	# view = HistoryView()
-	# view.exec_()
-
-
-	# Test HistoryController
-	# -------------------------
-	controller = HistoryController()
-	controller.view.exec_()
-	print controller.project
+	pass
 

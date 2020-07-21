@@ -1,12 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-from os.path import join as osjoin
 import re
+from os.path import join as osjoin
 from collections import OrderedDict
 from core import Path
-
-
-__author__ = 'Brandon McCleary'
 
 
 class Rotor(object):
